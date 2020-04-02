@@ -37,6 +37,6 @@ USER root
 
 EXPOSE 5000
 
-COPY --from=build /opt/app/techDB /usr/bin/
+COPY --from=build /opt/app/db_golang /usr/bin/
 
 CMD service postgresql start && techDB
