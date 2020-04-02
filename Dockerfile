@@ -37,6 +37,6 @@ USER root
 
 EXPOSE 5000
 
-COPY --from=build /opt/app/db_golang /usr/bin/
+COPY --from=build /opt/app/main /usr/bin/
 
-CMD service postgresql start && db_golang
+CMD service postgresql start && main
