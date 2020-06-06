@@ -100,6 +100,6 @@ CREATE INDEX IF NOT EXISTS idx_posts_thread_path ON posts (thread, pathtopost);
 CREATE INDEX IF NOT EXISTS idx_posts_thread_id ON posts (thread, id);
 CREATE INDEX IF NOT EXISTS idx_posts_thread_id0 ON posts (thread, id) WHERE parent = 0;
 CREATE INDEX IF NOT EXISTS idx_posts_thread_id_created ON posts (id, created, thread);
-CREATE INDEX IF NOT EXISTS idx_posts_thread_path1_id ON posts (thread, (pathtopost[1]), id);
+
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_votes_thread_nickname ON votes (thread, nickname);
