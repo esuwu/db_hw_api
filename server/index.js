@@ -514,6 +514,14 @@ GET /thread/{slug_or_id}/posts
 */
 
 async function flatSort(data = {}) {
+
+    /*
+    PREPARE flatSort1 SELECT * FROM posts WHERE thread=${+data.slug_or_id ? '$1' : `(SELECT id FROM threads WHERE slug=$1)`} AND id < $2 ORDER BY "created" DESC, id DESC LIMIT $3`,
+                                      [data.slug_or_id, data.since, data.limit]
+    * PREPARE fooplan (int, text, bool, numeric) AS
+    INSERT INTO foo VALUES($1, $2, $3, $4);
+EXECUTE fooplan(1, 'Hunter Valley', 't', 200.00);
+    * */
     try {
         const isThread = await pool.query(`SELECT id FROM threads WHERE id=${+data.slug_or_id ? '$1' : '(SELECT id FROM threads WHERE slug=$1)'}`, [data.slug_or_id]);
         if (!isThread.rowCount) {
@@ -879,7 +887,7 @@ cluster(function(worker) {
     app.post('/api/service/clear', (req, res) => {
         clearService()
             .then(() => {
-                res.status(200).send(null);
+                return  res.status(200).send(null);
             })
             .catch(() => {
 
@@ -889,7 +897,7 @@ cluster(function(worker) {
     app.get('/api/service/status', (req, res) => {
         getServiceStatus()
             .then(result => {
-                res.status(200).send({
+                return res.status(200).send({
                     'forum': +result.forums,
                     'post': +result.posts,
                     'thread': +result.threads,
@@ -923,10 +931,9 @@ cluster(function(worker) {
                     if (message || message_param != message) {
                         response['isEdited'] = isedited;
                     }
-
-                    res.status(200).send(response);
+                    return res.status(200).send(response);
                 } else {
-                    res.status(404).send({
+                    return res.status(404).send({
                         'message': `Can't find user with id #${id}\n`
                     });
                 }
@@ -1001,9 +1008,9 @@ cluster(function(worker) {
                         response['forum']['user'] = forum_user;
                     }
 
-                    res.status(200).send(response);
+                    return res.status(200).send(response);
                 } else {
-                    res.status(404).send({
+                   return res.status(404).send({
                         'message': `Can't find user with id #${id}\n`
                     })
                 }
@@ -1023,10 +1030,10 @@ cluster(function(worker) {
 
         createUser({about, email, fullname, nickname})
             .then(result => {
-                res.status(201).send(result.rows[0]);
+               return res.status(201).send(result.rows[0]);
             })
             .catch(error => {
-                res.status(409).send(error.rows);
+               return res.status(409).send(error.rows);
             });
     });
 
@@ -1045,16 +1052,16 @@ cluster(function(worker) {
                 if (result.rowCount) {
                     return getForumUsers({desc, limit, since, slug});
                 } else {
-                    res.status(404).send({
+                   return res.status(404).send({
                         'message': 'Can\'t find user with id #${slug}\n'
                     })
                 }
             })
             .then(result => {
-                res.status(200).send(result.rows);
+                return res.status(200).send(result.rows);
             })
             .catch(() => {
-                res.status(404).send({})})
+                return res.status(404).send({})})
     })
 
     app.post('/api/thread/:slug_or_id/details', (req, res) => {
@@ -1064,14 +1071,17 @@ cluster(function(worker) {
 
         updateThread({values: [message, title], slug_or_id})
             .then(result => {
-                result.rowCount ?
-                    res.status(200).send(result.rows[0]) :
-                    res.status(404).send({
-                        'message': `Can't find user by nickname: ${slug_or_id}`
-                    });
+               if( result.rowCount ){
+                   return  res.status(200).send(result.rows[0])
+               } else {
+                   return  res.status(404).send({
+                       'message': `Can't find user by nickname: ${slug_or_id}`
+                   });
+               }
+
             })
             .catch(() => {
-                res.status(409).send({
+                return  res.status(409).send({
                     'message': `Can't find user with id #${slug_or_id}\n`
                 })
             })
@@ -1082,14 +1092,14 @@ cluster(function(worker) {
         getThreadDetails({slug_or_id})
             .then(result => {
                 if (!result.rowCount) {
-                    res.status(404).send({
+                    return  res.status(404).send({
                         'message': `Can't find user with id #${slug_or_id}\n`
                     })
                 }
                 res.status(200).send(result.rows[0]);
             })
             .catch(() => {
-                res.status(404).send({
+                return res.status(404).send({
                     'message': `Can't find user with id #${slug_or_id}\n`
                 })
             })
@@ -1113,24 +1123,24 @@ cluster(function(worker) {
             flatSort({desc, limit, since, slug_or_id})
                 .then(result => {
                     if(result.error) {
-                        res.status(404).send({
+                        return   res.status(404).send({
                             'message': `Can't find thread by slug: ${slug_or_id}`
                         });
                     }
-                    res.status(200).send(result.rows);
+                    return  res.status(200).send(result.rows);
                 })
                 .catch(() => {
-                    res.status(404).send([]);
+                    return res.status(404).send([]);
                 })
         } else if (sort === 'tree') {
             treeSort({desc, limit, since, slug_or_id})
                 .then(result => {
                     if(result.error) {
-                        res.status(404).send({
+                        return  res.status(404).send({
                             'message': `Can't find thread by slug: ${slug_or_id}`
                         });
                     }
-                    res.status(200).send(result.rows);
+                    return  res.status(200).send(result.rows);
                 })
                 .catch(() => {
 
@@ -1139,17 +1149,17 @@ cluster(function(worker) {
             parentTreeSort({desc, limit, since, slug_or_id})
                 .then(result => {
                     if(result.error) {
-                        res.status(404).send({
+                        return  res.status(404).send({
                             'message': `Can't find thread by slug: ${slug_or_id}`
                         });
                     }
-                    res.status(200).send(result.rows);
+                    return res.status(200).send(result.rows);
                 })
                 .catch(() => {
 
                 })
         } else {
-            res.status(404).send({
+            return  res.status(404).send({
                 'message': `Can't find thread by slug: ${slug_or_id}`
             });
         }
@@ -1162,10 +1172,10 @@ cluster(function(worker) {
 
         insertVote({slug_or_id, nickname, voice})
             .then(result => {
-                res.status(200).send(result.rows[0]);
+                return  res.status(200).send(result.rows[0]);
             })
             .catch(() => {
-                res.status(404).send({
+                return res.status(404).send({
                     'message': `Can't find thread with id #${slug_or_id}\n`,
                 });
             })
@@ -1184,18 +1194,18 @@ cluster(function(worker) {
                 if (result.rowCount) {
                     return getThreads({desc, limit, since, slug});
                 } else {
-                    res.status(404).send({
+                    return res.status(404).send({
                         'message': `Can't find forum with id #${slug}\n`
                     });
                 }
             })
             .then(result => {
                 if (result) {
-                    res.status(200).send(result.rows);
+                    return  res.status(200).send(result.rows);
                 }
             })
             .catch(() => {
-                res.status(404).send({});
+                return res.status(404).send({});
             });
     })
 
@@ -1216,9 +1226,9 @@ cluster(function(worker) {
         createThread({author, created, forum, message, title, slug})
             .then(result => {
                 if (result.rowCount) {
-                    res.status(201).send(result.rows[0]);
+                    return res.status(201).send(result.rows[0]);
                 } else {
-                    res.status(404).send({
+                    return  res.status(404).send({
                         'message': `Can't find thread author by nickname: ${author}`
                     })
                 }
@@ -1231,14 +1241,14 @@ cluster(function(worker) {
                         'message': `Can't find thread author by nickname: ${author}`
                     })
                 } else {
-                    res.status(404).send({
+                    return  res.status(404).send({
                         'message': `Can't find thread forum by slug: ${forum}`
                     })
                 }
             })
             .then(result => {
                 if (result) {
-                    res.status(409).send(result.rows[0]);
+                    return  res.status(409).send(result.rows[0]);
                 }
             })
             .catch(() => {
@@ -1250,14 +1260,17 @@ cluster(function(worker) {
         const nickname = req.params.nickname;
         getUserByNickname({nickname})
             .then(result => {
-                result.rowCount ?
-                    res.status(200).send(result.rows[0]) :
-                    res.status(404).send({
+                if(result.rowCount){
+                    return res.status(200).send(result.rows[0])
+                }else {
+                    return  res.status(404).send({
                         'message': `Can't find user with id #${nickname}\n`,
                     });
+                }
+
             })
             .catch(() => {
-                res.status(404).send({
+                return  res.status(404).send({
                     'message': `Can't find user with id #${nickname}\n`,
                 });
             })
@@ -1275,18 +1288,18 @@ cluster(function(worker) {
             createThreads({optional: [author, message, parent], slug_or_id, posts})
                 .then(result => {
                     if (result.error === 'conflict') {
-                        res.status(409).send({
+                        return  res.status(409).send({
                             "message": "Parent post was created in another thread"
                         });
                     } else if (result.error === 'not found') {
-                        res.status(404).send({
+                        return  res.status(404).send({
                             'message': `Can't find user with id #${slug_or_id}\n`
                         });
                     }
-                    res.status(201).send(result.rows);
+                    return  res.status(201).send(result.rows);
                 })
                 .catch(() => {
-                    res.status(404).send({
+                    return res.status(404).send({
                         'message': `Can't find user with id #${slug_or_id}\n`
                     });
                 })
@@ -1294,11 +1307,11 @@ cluster(function(worker) {
             checkThreadForCreate({slug_or_id})
                 .then(result => {
                     if(!result.rowCount) {
-                        res.status(404).send({
+                        return  res.status(404).send({
                             'message': `Can't find user with id #${slug_or_id}\n`
                         });
                     } else {
-                        res.status(201).send([]);
+                        return   res.status(201).send([]);
                     }
                 })
                 .catch(() => {
@@ -1315,28 +1328,32 @@ cluster(function(worker) {
         if (about || email || fullname) {
             updateUser({values: [about, email, fullname], nickname})
                 .then(result => {
-                    result.rowCount ?
-                        res.status(200).send(result.rows[0]) :
-                        res.status(404).send({
+                    if(result.rowCount ){
+                        return res.status(200).send(result.rows[0])
+                    } else {
+                        return res.status(404).send({
                             'message': `Can't find user by nickname: ${nickname}`
                         });
+                    }
                 })
                 .catch(() => {
-                    res.status(409).send({
+                    return  res.status(409).send({
                         'message': `Can't find user with id #${nickname}\n`
                     })
                 })
         } else {
             getUserByNickname({nickname})
                 .then(result => {
-                    result.rowCount ?
-                        res.status(200).send(result.rows[0]) :
-                        res.status(404).send({
-                            'message': `Can't find user with id #${nickname}\n`,
-                        });
+                   if ( result.rowCount){
+                       return  res.status(200).send(result.rows[0])
+                   }else {
+                       return res.status(404).send({
+                           'message': `Can't find user with id #${nickname}\n`,
+                       });
+                   }
                 })
                 .catch(() => {
-                    res.status(404).send({
+                    return  res.status(404).send({
                         'message': `Can't find user with id #${nickname}\n`,
                     });
                 })
@@ -1350,11 +1367,11 @@ cluster(function(worker) {
 
         createForum({slug, title, user})
             .then(result => {
-                res.status(201).send(result.rows[0]);
+                return res.status(201).send(result.rows[0]);
             })
             .catch(error => {
                 if (error.constraint === 'forums_user_fkey') {
-                    res.status(404).send({
+                    return   res.status(404).send({
                         'message' : `Can't find user with nickname: ${user}`
                     });
                 } else {
@@ -1363,7 +1380,7 @@ cluster(function(worker) {
             })
             .then(result => {
                 if(result) {
-                    res.status(409).send(result.rows[0]);
+                    return  res.status(409).send(result.rows[0]);
                 }
             })
             .catch(() => {
@@ -1375,14 +1392,16 @@ cluster(function(worker) {
         const slug = req.params.slug;
         getForumDetailsBySlug({slug})
             .then(result => {
-                result.rowCount ?
-                    res.status(200).send(result.rows[0]) :
-                    res.status(404).send({
-                        'message': `Can't find user with id #${slug}\n`,
-                    });
+               if( result.rowCount){
+                   return  res.status(200).send(result.rows[0])
+               } else {
+                   return  res.status(404).send({
+                       'message': `Can't find user with id #${slug}\n`,
+                   });
+               }
             })
             .catch(() => {
-                res.status(404).send({
+                return   res.status(404).send({
                     'message': `Can't find user with id #${slug}\n`,
                 });
             })
