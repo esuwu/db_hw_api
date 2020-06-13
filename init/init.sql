@@ -90,11 +90,11 @@ DROP INDEX IF EXISTS idx_votes_thread_nickname;
 
 DROP INDEX IF EXISTS idx_fu_user;
 DROP INDEX IF EXISTS idx_fu_forum;
-
+CREATE INDEX idx_forums_slug_hash ON forums USING hash (slug);
 
 CREATE INDEX IF NOT EXISTS idx_fu_user ON forumusers (forum, nickname);
 CREATE INDEX IF NOT EXISTS idx_fu_forum ON forumusers (forum);
-
+CLUSTER forums USING idx_forums_slug_hash;
 CREATE INDEX IF NOT EXISTS idx_users_nickname ON users (nickname);
 
 CREATE INDEX IF NOT EXISTS idx_forums_slug ON forums (slug);
@@ -102,14 +102,19 @@ CREATE INDEX IF NOT EXISTS idx_forums_slug ON forums (slug);
 CREATE INDEX IF NOT EXISTS idx_threads_id ON threads (id);
 CREATE INDEX IF NOT EXISTS idx_threads_slug ON threads (slug);
 CREATE INDEX IF NOT EXISTS idx_threads_forum ON threads (forum);
+CLUSTER threads USING idx_threads_fslugdate;
+CLUSTER users USING idx_users_all;
 
 CREATE INDEX IF NOT EXISTS idx_posts_forum ON posts (forum);
 CREATE INDEX IF NOT EXISTS idx_posts_id ON posts (id);
+
+CREATE INDEX idx_threads_slughash ON threads USING hash (slug);
+CREATE INDEX idx_threads_tidhash ON threads USING hash (t_id);
 CREATE INDEX IF NOT EXISTS idx_posts_thread_path ON posts (thread, pathtopost);
 CREATE INDEX IF NOT EXISTS idx_posts_thread_id ON posts (thread, id);
 CREATE INDEX IF NOT EXISTS idx_posts_thread_id0 ON posts (thread, id) WHERE parent = 0;
 CREATE INDEX IF NOT EXISTS idx_posts_thread_id_created ON posts (id, created, thread);
 CREATE INDEX IF NOT EXISTS idx_posts_thread_path1_id ON posts (thread, (pathtopost[1]), id);
-
-
+CLUSTER messages USING idx_messages_path_1;
+CLUSTER forumUsers USING idx_forumusers_slug_nick;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_votes_thread_nickname ON votes (thread, nickname);
