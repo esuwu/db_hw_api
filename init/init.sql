@@ -7,6 +7,12 @@ ALTER SYSTEM SET effective_io_concurrency = '200';
 ALTER SYSTEM SET seq_page_cost = '0.1';
 ALTER SYSTEM SET random_page_cost = '0.1';
 
+ALTER SYSTEM SET max_worker_processes = '4';
+ALTER SYSTEM SET max_parallel_workers_per_gather = '2';
+ALTER SYSTEM SET max_parallel_workers = '4';
+ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
+
+
 CREATE EXTENSION IF NOT EXISTS CITEXT;
 
 CREATE UNLOGGED TABLE users (
@@ -34,6 +40,8 @@ CREATE UNLOGGED TABLE threads (
     title    VARCHAR(100), 
     votes    INT            DEFAULT 0
 );
+
+CREATE UNIQUE INDEX idx_voteth_thrnick ON voteThreads USING btree (id, author);
 
 CREATE SEQUENCE IF NOT EXISTS posts_id_seq START 1;
 
