@@ -1,11 +1,10 @@
 'use strict'
 
 const Pool = require('pg').Pool;
-const app = require('fastify')({
-    logger: false,
-});
-var morgan = require('morgan');
 
+
+const cluster = require('express-cluster');
+const express = require('express');
 
 const pool = new Pool({
     user: 'me',
@@ -96,20 +95,7 @@ async function createUser(data = {}) {
     }
 }
 
-app.post('/api/user/:nickname/create', (req, res) => {
-    const about = req.body.about;
-    const email = req.body.email;
-    const fullname = req.body.fullname;
-    const nickname = req.params.nickname;
 
-    createUser({about, email, fullname, nickname})
-    .then(result => {
-        res.status(201).send(result.rows[0]);
-    })
-    .catch(error => {
-        res.status(409).send(error.rows);
-    });
-});
 
 /*
 ===GET USER===
@@ -129,22 +115,6 @@ async function getUserByNickname(data = {}) {
     }
 }
 
-app.get('/api/user/:nickname/profile', (req, res) => {
-    const nickname = req.params.nickname;
-    getUserByNickname({nickname})
-    .then(result => {
-        result.rowCount ? 
-        res.status(200).send(result.rows[0]) :
-        res.status(404).send({
-            'message': `Can't find user with id #${nickname}\n`,
-        });
-    })
-    .catch(() => {
-        res.status(404).send({
-            'message': `Can't find user with id #${nickname}\n`,
-        });
-    })
-})
 
 /*
 ===UPDATE USER===
@@ -172,42 +142,6 @@ async function updateUser(data = {}) {
     }
 }
 
-app.post('/api/user/:nickname/profile', (req, res) => {
-    const about = req.body.about;
-    const email = req.body.email;
-    const fullname = req.body.fullname;
-    const nickname = req.params.nickname;
-
-    if (about || email || fullname) {
-        updateUser({values: [about, email, fullname], nickname})
-        .then(result => {
-            result.rowCount ? 
-                res.status(200).send(result.rows[0]) : 
-                res.status(404).send({
-                    'message': `Can't find user by nickname: ${nickname}`
-                });
-        })
-        .catch(() => {
-            res.status(409).send({
-                'message': `Can't find user with id #${nickname}\n`
-            })
-        })
-    } else {
-        getUserByNickname({nickname})
-        .then(result => {
-            result.rowCount ? 
-            res.status(200).send(result.rows[0]) :
-            res.status(404).send({
-                'message': `Can't find user with id #${nickname}\n`,
-            });
-        })
-        .catch(() => {
-            res.status(404).send({
-                'message': `Can't find user with id #${nickname}\n`,
-            });
-        })
-    }
-})
 
 /*
 ===GET FORUM===
@@ -233,29 +167,14 @@ async function getForumDetailsBySlug(data = {}) {
                                       [data.slug]);
         return res;
     } catch(err) {
-        console.log('---------------')
-        console.log('ERROR IN getForumDetailsBySlug');
-        console.log(err);
+        // console.log('---------------')
+        // console.log('ERROR IN getForumDetailsBySlug');
+        // console.log(err);
         throw err;
     }
 }
 
-app.get('/api/forum/:slug/details', (req, res) => {
-    const slug = req.params.slug;
-    getForumDetailsBySlug({slug})
-    .then(result => {
-        result.rowCount ?
-        res.status(200).send(result.rows[0]) :
-        res.status(404).send({
-            'message': `Can't find user with id #${slug}\n`,
-        });
-    })
-    .catch(() => {
-        res.status(404).send({
-            'message': `Can't find user with id #${slug}\n`,
-        });
-    })
-})
+
 
 /*
 ===CREATE FORUM===
@@ -277,30 +196,6 @@ async function createForum(data = {}) {
     }
 }
 
-app.post('/api/forum/create', (req, res) => {
-    const slug = req.body.slug;
-    const title = req.body.title;
-    const user = req.body.user;
-
-    createForum({slug, title, user})
-    .then(result => {
-        res.status(201).send(result.rows[0]);
-    })
-    .catch(error => {
-        if (error.constraint === 'forums_user_fkey') {
-            res.status(404).send({
-                'message' : `Can't find user with nickname: ${user}`
-            });
-        } else {
-            return getForumBySlug({slug});
-        }
-    })
-    .then(result => {
-        if(result) { 
-            res.status(409).send(result.rows[0]);
-        }
-    })
-})
 
 /*
 ===CREATE THREAD===
@@ -349,49 +244,6 @@ async function createThread(data = {}) {
     }
 }
 
-app.post('/api/forum/:slug/create', (req, res) => {
-    const author = req.body.author;
-    const created = req.body.created;
-    const forum = req.params.slug;
-    const message = req.body.message;
-    const title = req.body.title;
-    let slug = req.body.slug;
-    let params = [];
-
-    if (req.body.slug) {
-        slug = req.body.slug;
-        params.push(', t.slug');
-    }
-
-    createThread({author, created, forum, message, title, slug})
-    .then(result => {
-        if (result.rowCount) {
-            res.status(201).send(result.rows[0]);
-        } else {
-            res.status(404).send({
-                'message': `Can't find thread author by nickname: ${author}`
-            })
-        }
-    })
-    .catch(error => {
-        if (error.constraint === 'threads_slug_key') {
-            return getThread({slug, params});
-        } else if (error.constraint === 'threads_author_fkey') {
-            res.status(404).send({
-                'message': `Can't find thread author by nickname: ${author}`
-            })
-        } else {
-            res.status(404).send({
-                'message': `Can't find thread forum by slug: ${forum}`
-            })
-        }
-    })
-    .then(result => {
-        if (result) {
-            res.status(409).send(result.rows[0]);
-        }
-    })
-})
 
 /*
 ===GET THREADS===
@@ -451,31 +303,6 @@ async function getThreads(data = {}) {
 
 }
 
-app.get('/api/forum/:slug/threads', (req, res) => {
-    const desc = req.query.desc;
-    const limit = req.query.limit;
-    const since = req.query.since;
-    const slug = req.params.slug;
-    
-    checkThread({slug})
-    .then(result => {
-        if (result.rowCount) {
-            return getThreads({desc, limit, since, slug});
-        } else {
-            res.status(404).send({
-                'message': `Can't find forum with id #${slug}\n`
-            });
-        }
-    })
-    .then(result => {
-        if (result) {
-            res.status(200).send(result.rows);
-        }
-    })
-    .catch(() => {
-        res.status(404).send({});
-    });
-})
 
 /*
 ===CREATE POSTS===
@@ -628,46 +455,7 @@ async function checkThreadForCreate(data = {}) {
     }
 }
 
-app.post('/api/thread/:slug_or_id/create', (req, res) => {
-    const slug_or_id = req.params.slug_or_id;
-    const posts = req.body;
 
-    if (posts.length) {
-        const author = posts[0].author;
-        const message = posts[0].message;
-        const parent = posts[0].parent;
-
-        createThreads({optional: [author, message, parent], slug_or_id, posts})
-        .then(result => {
-            if (result.error === 'conflict') {
-                res.status(409).send({
-                    "message": "Parent post was created in another thread"
-                  });
-            } else if (result.error === 'not found') {
-                res.status(404).send({
-                    'message': `Can't find user with id #${slug_or_id}\n`
-                  });
-            }
-            res.status(201).send(result.rows);
-        })
-        .catch(() => {
-            res.status(404).send({
-                'message': `Can't find user with id #${slug_or_id}\n`
-            });
-        })
-    } else {
-        checkThreadForCreate({slug_or_id})
-        .then(result => {
-            if(!result.rowCount) {
-                res.status(404).send({
-                    'message': `Can't find user with id #${slug_or_id}\n`
-                });
-            } else {
-                res.status(201).send([]);
-            }
-        })
-    }
-})
 
 /*
 ===ADD VOTE===
@@ -698,23 +486,6 @@ async function insertVote(data = {}) {
     }
 }
 
-app.post('/api/thread/:slug_or_id/vote', (req, res) => {
-    const slug_or_id = req.params.slug_or_id;
-    const nickname = req.body.nickname;
-    const voice = req.body.voice;
-
-    insertVote({slug_or_id, nickname, voice})
-    .then(result => {
-        res.status(200).send(result.rows[0]);
-    })
-    .catch(() => {
-        res.status(404).send({
-            'message': `Can't find thread with id #${slug_or_id}\n`,
-        });
-    })
-
-
-})
 
 /*
 ===GET THREAD===
@@ -734,27 +505,11 @@ async function getThreadDetails(data = {}) {
     }
 } 
 
-app.get('/api/thread/:slug_or_id/details', (req, res) => {
-    const slug_or_id = req.params.slug_or_id;
-    getThreadDetails({slug_or_id})
-    .then(result => {
-        if (!result.rowCount) {
-            res.status(404).send({
-                'message': `Can't find user with id #${slug_or_id}\n`
-            })
-        }
-        res.status(200).send(result.rows[0]);
-    })
-    .catch(() => {
-        res.status(404).send({
-            'message': `Can't find user with id #${slug_or_id}\n`
-        })
-    })
-})
+
 
 /*
 ===GET POSTS===
-
+IT DOES MATTERS
 GET /thread/{slug_or_id}/posts
 */
 
@@ -903,59 +658,6 @@ async function parentTreeSort(data = {}) {
     }
 }
 
-app.get('/api/thread/:slug_or_id/posts', (req, res) => {
-    let desc = req.query.desc;
-    let limit = req.query.limit;
-    let since = req.query.since;
-    let sort = req.query.sort;
-    let slug_or_id = req.params.slug_or_id;
-
-    if (!limit) {
-        limit = 10;
-    }
-
-    desc = desc === 'true';
-    since = parseInt(since, 10) ? parseInt(since, 10) : null;
-
-    if (sort === 'flat' || !sort) {
-        flatSort({desc, limit, since, slug_or_id})
-        .then(result => {
-            if(result.error) {
-                res.status(404).send({
-                    'message': `Can't find thread by slug: ${slug_or_id}`
-                });
-            }
-            res.status(200).send(result.rows);
-        })
-        .catch(() => {
-            res.status(404).send([]);
-        })
-    } else if (sort === 'tree') {
-        treeSort({desc, limit, since, slug_or_id})
-        .then(result => {
-            if(result.error) {
-                res.status(404).send({
-                    'message': `Can't find thread by slug: ${slug_or_id}`
-                });
-            }
-            res.status(200).send(result.rows);
-        })
-    } else if (sort === 'parent_tree') {
-        parentTreeSort({desc, limit, since, slug_or_id})
-        .then(result => {
-            if(result.error) {
-                res.status(404).send({
-                    'message': `Can't find thread by slug: ${slug_or_id}`
-                });
-            }
-            res.status(200).send(result.rows);
-        })
-    } else {
-        res.status(404).send({
-            'message': `Can't find thread by slug: ${slug_or_id}`
-        });
-    }
-})
 
 /*
 ===UPDATE THREAD===
@@ -987,25 +689,6 @@ async function updateThread(data = {}) {
     }
 }
 
-app.post('/api/thread/:slug_or_id/details', (req, res) => {
-    const slug_or_id = req.params.slug_or_id;
-    const message = req.body.message;
-    const title = req.body.title;
-
-    updateThread({values: [message, title], slug_or_id})
-    .then(result => {
-        result.rowCount ? 
-                res.status(200).send(result.rows[0]) : 
-                res.status(404).send({
-                    'message': `Can't find user by nickname: ${slug_or_id}`
-                });
-    })
-    .catch(() => {
-        res.status(409).send({
-            'message': `Can't find user with id #${slug_or_id}\n`
-        })
-    })
-});
 
 /*
 ===GET FORUM USERS===
@@ -1050,32 +733,6 @@ async function getForumUsers(data = {}) {
     }
 }
 
-app.get('/api/forum/:slug/users', (req, res) => {
-    let desc = req.query.desc;
-    let limit = req.query.limit;
-    let since = req.query.since;
-    const slug = req.params.slug;
-
-    desc = desc === 'true';
-    limit = limit ? limit : 10;
-    since = since ? since : null;
-
-    checkForum({slug})
-    .then(result => {
-        if (result.rowCount) {
-            return getForumUsers({desc, limit, since, slug});
-        } else {
-            res.status(404).send({
-                'message': 'Can\'t find user with id #${slug}\n'
-              })
-        }
-    })
-    .then(result => {
-        res.status(200).send(result.rows);
-    })
-    .catch(() => {
-        res.status(404).send({})})
-})
 
 /*
 ===GET POST DETAILS===
@@ -1112,82 +769,6 @@ async function getPostDetail(data = {}) {
 
 }
 
-app.get('/api/post/:id/details', (req, res) => {
-    let user_param = null;
-    let thread_param = null;
-    let forum_param = null;
-    let related = req.query.related;
-    if (related) {
-        let params = related.split(',');
-        user_param = params[params.indexOf('user')];
-        thread_param = params[params.indexOf('thread')];
-        forum_param = params[params.indexOf('forum')];
-    }
-    const id = req.params.id;
-
-    getPostDetail({id, user_param, thread_param, forum_param})
-    .then(result => {
-        if (result.rowCount) { 
-            let { author, created, forum, id, isedited, message, parent, thread,
-                nickname, fullname, email, about, thread_author, 
-                thread_created, thread_forum, thread_id, 
-                thread_message, thread_slug, thread_title, thread_votes,
-                forum_posts, forum_slug, forum_threads, forum_title, forum_user } = result.rows[0];
-
-            let response = {
-                'post' : {
-                    'author': author,
-                    'created' : created,
-                    'forum': forum,
-                    'id': id,
-                    'isEdited': isedited,
-                    'message': message,
-                    'parent' : parent,
-                    'thread': thread,
-            }}
-
-            if (user_param) {
-                response['author'] = {};
-                response['author']['nickname'] = nickname;
-                response['author']['fullname'] = fullname;
-                response['author']['email'] = email;
-                response['author']['about'] = about;
-            }
-
-            if (thread_param) {
-                response['thread'] = {};
-                response['thread']['author'] = thread_author;
-                response['thread']['created'] = thread_created;
-                response['thread']['forum'] = thread_forum;
-                response['thread']['id'] = thread_id;
-                response['thread']['message'] = thread_message;
-                response['thread']['slug'] = thread_slug;
-                response['thread']['title'] = thread_title;
-                response['thread']['votes'] = thread_votes;
-            }
-
-            if (forum_param) {
-                response['forum'] = {};
-                response['forum']['posts'] = forum_posts;
-                response['forum']['slug'] = forum_slug;
-                response['forum']['threads'] = forum_threads;
-                response['forum']['title'] = forum_title;
-                response['forum']['user'] = forum_user;
-            }
-
-            res.status(200).send(response);
-        } else {
-            res.status(404).send({
-                'message': `Can't find user with id #${id}\n`
-              })
-        }
-    })
-    .catch(() => {
-        // console.log('---------------');
-        // console.log('ERROR IN getPostDetails')
-        // console.log(error);
-    })
-});
 
 /*
 ===UPDATE POST MESSAGE===
@@ -1221,40 +802,6 @@ async function updatePostMessage(data = {}) {
     }
 } 
 
-app.post('/api/post/:id/details', (req, res) => {
-    const id = req.params.id;
-    const message_param = req.body.message || null;
-
-    updatePostMessage({id, message: message_param})
-    .then(result => {
-        if (result.rowCount) {
-            let { author, created, forum, id, isedited, message, thread } = result.rows[0];
-            let response = {
-                'author': author,
-                'created' : created,
-                'forum': forum,
-                'id': id,
-                'message': message,
-                'thread': thread,
-            } 
-
-            if (message || message_param != message) {
-                response['isEdited'] = isedited;
-            }
-            
-            res.status(200).send(response);
-        } else {
-            res.status(404).send({
-                'message': `Can't find user with id #${id}\n`
-            });
-        }
-    })
-    .catch(() => {
-        // console.log('---------------');
-        // console.log('ERROR IN updatePostMessage');
-        // console.log(err);
-    })
-})
 
 /*
 ===GET SERVICE STATUS===
@@ -1282,17 +829,7 @@ async function getServiceStatus() {
     }
 }
 
-app.get('/api/service/status', (req, res) => {
-    getServiceStatus()
-    .then(result => {
-        res.status(200).send({
-            'forum': +result.forums,
-            'post': +result.posts,
-            'thread': +result.threads,
-            'user': +result.users,
-        })
-    })
-})
+
 
 /*
 ===CLEAR DB===
@@ -1316,25 +853,529 @@ async function clearService() {
     }
 }
 
-app.addContentTypeParser('application/json', { parseAs: 'string' }, function(request, body, done) {
-    try {
-        let json = JSON.parse(body);
-        done(null, json);
-    } catch(err) {
-        done(null, undefined);
-    } 
-});
-
-app.post('/api/service/clear', (req, res) => {
-    clearService()
-    .then(() => {
-        res.status(200).send(null);
-    })
-})
 
 
 const port = process.env.PORT || 5000;
 
-app.listen(port, '0.0.0.0',(err,address) => {
-	console.log(`Server listening on port ${port}`);
+
+
+cluster(function(worker) {
+    const app = express();
+
+    // app.addContentTypeParser('application/json', { parseAs: 'string' }, function(request, body, done) {
+    //     try {
+    //         let json = JSON.parse(body);
+    //         done(null, json);
+    //     } catch(err) {
+    //         done(null, undefined);
+    //     }
+    // });
+    const bodyParser = require('body-parser');
+    app.use(bodyParser.json());
+
+    app.post('/api/service/clear', (req, res) => {
+        clearService()
+            .then(() => {
+                res.status(200).send(null);
+            })
+            .catch(() => {
+
+            })
+    })
+
+    app.get('/api/service/status', (req, res) => {
+        getServiceStatus()
+            .then(result => {
+                res.status(200).send({
+                    'forum': +result.forums,
+                    'post': +result.posts,
+                    'thread': +result.threads,
+                    'user': +result.users,
+                })
+            })
+            .catch(() => {
+
+            })
+    })
+
+
+
+    app.post('/api/post/:id/details', (req, res) => {
+        const id = req.params.id;
+        const message_param = req.body.message || null;
+
+        updatePostMessage({id, message: message_param})
+            .then(result => {
+                if (result.rowCount) {
+                    let { author, created, forum, id, isedited, message, thread } = result.rows[0];
+                    let response = {
+                        'author': author,
+                        'created' : created,
+                        'forum': forum,
+                        'id': id,
+                        'message': message,
+                        'thread': thread,
+                    }
+
+                    if (message || message_param != message) {
+                        response['isEdited'] = isedited;
+                    }
+
+                    res.status(200).send(response);
+                } else {
+                    res.status(404).send({
+                        'message': `Can't find user with id #${id}\n`
+                    });
+                }
+            })
+            .catch(() => {
+                // console.log('---------------');
+                // console.log('ERROR IN updatePostMessage');
+                // console.log(err);
+            })
+    })
+
+    app.get('/api/post/:id/details', (req, res) => {
+        let user_param = null;
+        let thread_param = null;
+        let forum_param = null;
+        let related = req.query.related;
+        if (related) {
+            let params = related.split(',');
+            user_param = params[params.indexOf('user')];
+            thread_param = params[params.indexOf('thread')];
+            forum_param = params[params.indexOf('forum')];
+        }
+        const id = req.params.id;
+
+        getPostDetail({id, user_param, thread_param, forum_param})
+            .then(result => {
+                if (result.rowCount) {
+                    let { author, created, forum, id, isedited, message, parent, thread,
+                        nickname, fullname, email, about, thread_author,
+                        thread_created, thread_forum, thread_id,
+                        thread_message, thread_slug, thread_title, thread_votes,
+                        forum_posts, forum_slug, forum_threads, forum_title, forum_user } = result.rows[0];
+
+                    let response = {
+                        'post' : {
+                            'author': author,
+                            'created' : created,
+                            'forum': forum,
+                            'id': id,
+                            'isEdited': isedited,
+                            'message': message,
+                            'parent' : parent,
+                            'thread': thread,
+                        }}
+
+                    if (user_param) {
+                        response['author'] = {};
+                        response['author']['nickname'] = nickname;
+                        response['author']['fullname'] = fullname;
+                        response['author']['email'] = email;
+                        response['author']['about'] = about;
+                    }
+
+                    if (thread_param) {
+                        response['thread'] = {};
+                        response['thread']['author'] = thread_author;
+                        response['thread']['created'] = thread_created;
+                        response['thread']['forum'] = thread_forum;
+                        response['thread']['id'] = thread_id;
+                        response['thread']['message'] = thread_message;
+                        response['thread']['slug'] = thread_slug;
+                        response['thread']['title'] = thread_title;
+                        response['thread']['votes'] = thread_votes;
+                    }
+
+                    if (forum_param) {
+                        response['forum'] = {};
+                        response['forum']['posts'] = forum_posts;
+                        response['forum']['slug'] = forum_slug;
+                        response['forum']['threads'] = forum_threads;
+                        response['forum']['title'] = forum_title;
+                        response['forum']['user'] = forum_user;
+                    }
+
+                    res.status(200).send(response);
+                } else {
+                    res.status(404).send({
+                        'message': `Can't find user with id #${id}\n`
+                    })
+                }
+            })
+            .catch(() => {
+                // console.log('---------------');
+                // console.log('ERROR IN getPostDetails')
+                // console.log(error);
+            })
+    });
+
+    app.post('/api/user/:nickname/create', (req, res) => {
+        const about = req.body.about;
+        const email = req.body.email;
+        const fullname = req.body.fullname;
+        const nickname = req.params.nickname;
+
+        createUser({about, email, fullname, nickname})
+            .then(result => {
+                res.status(201).send(result.rows[0]);
+            })
+            .catch(error => {
+                res.status(409).send(error.rows);
+            });
+    });
+
+    app.get('/api/forum/:slug/users', (req, res) => {
+        let desc = req.query.desc;
+        let limit = req.query.limit;
+        let since = req.query.since;
+        const slug = req.params.slug;
+
+        desc = desc === 'true';
+        limit = limit ? limit : 10;
+        since = since ? since : null;
+
+        checkForum({slug})
+            .then(result => {
+                if (result.rowCount) {
+                    return getForumUsers({desc, limit, since, slug});
+                } else {
+                    res.status(404).send({
+                        'message': 'Can\'t find user with id #${slug}\n'
+                    })
+                }
+            })
+            .then(result => {
+                res.status(200).send(result.rows);
+            })
+            .catch(() => {
+                res.status(404).send({})})
+    })
+
+    app.post('/api/thread/:slug_or_id/details', (req, res) => {
+        const slug_or_id = req.params.slug_or_id;
+        const message = req.body.message;
+        const title = req.body.title;
+
+        updateThread({values: [message, title], slug_or_id})
+            .then(result => {
+                result.rowCount ?
+                    res.status(200).send(result.rows[0]) :
+                    res.status(404).send({
+                        'message': `Can't find user by nickname: ${slug_or_id}`
+                    });
+            })
+            .catch(() => {
+                res.status(409).send({
+                    'message': `Can't find user with id #${slug_or_id}\n`
+                })
+            })
+    });
+
+    app.get('/api/thread/:slug_or_id/details', (req, res) => {
+        const slug_or_id = req.params.slug_or_id;
+        getThreadDetails({slug_or_id})
+            .then(result => {
+                if (!result.rowCount) {
+                    res.status(404).send({
+                        'message': `Can't find user with id #${slug_or_id}\n`
+                    })
+                }
+                res.status(200).send(result.rows[0]);
+            })
+            .catch(() => {
+                res.status(404).send({
+                    'message': `Can't find user with id #${slug_or_id}\n`
+                })
+            })
+    })
+
+    app.get('/api/thread/:slug_or_id/posts', (req, res) => {
+        let desc = req.query.desc;
+        let limit = req.query.limit;
+        let since = req.query.since;
+        let sort = req.query.sort;
+        let slug_or_id = req.params.slug_or_id;
+
+        if (!limit) {
+            limit = 10;
+        }
+
+        desc = desc === 'true';
+        since = parseInt(since, 10) ? parseInt(since, 10) : null;
+
+        if (sort === 'flat' || !sort) {
+            flatSort({desc, limit, since, slug_or_id})
+                .then(result => {
+                    if(result.error) {
+                        res.status(404).send({
+                            'message': `Can't find thread by slug: ${slug_or_id}`
+                        });
+                    }
+                    res.status(200).send(result.rows);
+                })
+                .catch(() => {
+                    res.status(404).send([]);
+                })
+        } else if (sort === 'tree') {
+            treeSort({desc, limit, since, slug_or_id})
+                .then(result => {
+                    if(result.error) {
+                        res.status(404).send({
+                            'message': `Can't find thread by slug: ${slug_or_id}`
+                        });
+                    }
+                    res.status(200).send(result.rows);
+                })
+        } else if (sort === 'parent_tree') {
+            parentTreeSort({desc, limit, since, slug_or_id})
+                .then(result => {
+                    if(result.error) {
+                        res.status(404).send({
+                            'message': `Can't find thread by slug: ${slug_or_id}`
+                        });
+                    }
+                    res.status(200).send(result.rows);
+                })
+        } else {
+            res.status(404).send({
+                'message': `Can't find thread by slug: ${slug_or_id}`
+            });
+        }
+    })
+
+    app.post('/api/thread/:slug_or_id/vote', (req, res) => {
+        const slug_or_id = req.params.slug_or_id;
+        const nickname = req.body.nickname;
+        const voice = req.body.voice;
+
+        insertVote({slug_or_id, nickname, voice})
+            .then(result => {
+                res.status(200).send(result.rows[0]);
+            })
+            .catch(() => {
+                res.status(404).send({
+                    'message': `Can't find thread with id #${slug_or_id}\n`,
+                });
+            })
+
+
+    })
+
+    app.get('/api/forum/:slug/threads', (req, res) => {
+        const desc = req.query.desc;
+        const limit = req.query.limit;
+        const since = req.query.since;
+        const slug = req.params.slug;
+
+        checkThread({slug})
+            .then(result => {
+                if (result.rowCount) {
+                    return getThreads({desc, limit, since, slug});
+                } else {
+                    res.status(404).send({
+                        'message': `Can't find forum with id #${slug}\n`
+                    });
+                }
+            })
+            .then(result => {
+                if (result) {
+                    res.status(200).send(result.rows);
+                }
+            })
+            .catch(() => {
+                res.status(404).send({});
+            });
+    })
+
+    app.post('/api/forum/:slug/create', (req, res) => {
+        const author = req.body.author;
+        const created = req.body.created;
+        const forum = req.params.slug;
+        const message = req.body.message;
+        const title = req.body.title;
+        let slug = req.body.slug;
+        let params = [];
+
+        if (req.body.slug) {
+            slug = req.body.slug;
+            params.push(', t.slug');
+        }
+
+        createThread({author, created, forum, message, title, slug})
+            .then(result => {
+                if (result.rowCount) {
+                    res.status(201).send(result.rows[0]);
+                } else {
+                    res.status(404).send({
+                        'message': `Can't find thread author by nickname: ${author}`
+                    })
+                }
+            })
+            .catch(error => {
+                if (error.constraint === 'threads_slug_key') {
+                    return getThread({slug, params});
+                } else if (error.constraint === 'threads_author_fkey') {
+                    res.status(404).send({
+                        'message': `Can't find thread author by nickname: ${author}`
+                    })
+                } else {
+                    res.status(404).send({
+                        'message': `Can't find thread forum by slug: ${forum}`
+                    })
+                }
+            })
+            .then(result => {
+                if (result) {
+                    res.status(409).send(result.rows[0]);
+                }
+            })
+    })
+
+    app.get('/api/user/:nickname/profile', (req, res) => {
+        const nickname = req.params.nickname;
+        getUserByNickname({nickname})
+            .then(result => {
+                result.rowCount ?
+                    res.status(200).send(result.rows[0]) :
+                    res.status(404).send({
+                        'message': `Can't find user with id #${nickname}\n`,
+                    });
+            })
+            .catch(() => {
+                res.status(404).send({
+                    'message': `Can't find user with id #${nickname}\n`,
+                });
+            })
+    })
+
+    app.post('/api/thread/:slug_or_id/create', (req, res) => {
+        const slug_or_id = req.params.slug_or_id;
+        const posts = req.body;
+
+        if (posts.length) {
+            const author = posts[0].author;
+            const message = posts[0].message;
+            const parent = posts[0].parent;
+
+            createThreads({optional: [author, message, parent], slug_or_id, posts})
+                .then(result => {
+                    if (result.error === 'conflict') {
+                        res.status(409).send({
+                            "message": "Parent post was created in another thread"
+                        });
+                    } else if (result.error === 'not found') {
+                        res.status(404).send({
+                            'message': `Can't find user with id #${slug_or_id}\n`
+                        });
+                    }
+                    res.status(201).send(result.rows);
+                })
+                .catch(() => {
+                    res.status(404).send({
+                        'message': `Can't find user with id #${slug_or_id}\n`
+                    });
+                })
+        } else {
+            checkThreadForCreate({slug_or_id})
+                .then(result => {
+                    if(!result.rowCount) {
+                        res.status(404).send({
+                            'message': `Can't find user with id #${slug_or_id}\n`
+                        });
+                    } else {
+                        res.status(201).send([]);
+                    }
+                })
+                .catch(() => {
+                    })
+        }
+    })
+
+    app.post('/api/user/:nickname/profile', (req, res) => {
+        const about = req.body.about;
+        const email = req.body.email;
+        const fullname = req.body.fullname;
+        const nickname = req.params.nickname;
+
+        if (about || email || fullname) {
+            updateUser({values: [about, email, fullname], nickname})
+                .then(result => {
+                    result.rowCount ?
+                        res.status(200).send(result.rows[0]) :
+                        res.status(404).send({
+                            'message': `Can't find user by nickname: ${nickname}`
+                        });
+                })
+                .catch(() => {
+                    res.status(409).send({
+                        'message': `Can't find user with id #${nickname}\n`
+                    })
+                })
+        } else {
+            getUserByNickname({nickname})
+                .then(result => {
+                    result.rowCount ?
+                        res.status(200).send(result.rows[0]) :
+                        res.status(404).send({
+                            'message': `Can't find user with id #${nickname}\n`,
+                        });
+                })
+                .catch(() => {
+                    res.status(404).send({
+                        'message': `Can't find user with id #${nickname}\n`,
+                    });
+                })
+        }
+    })
+
+    app.post('/api/forum/create', (req, res) => {
+        const slug = req.body.slug;
+        const title = req.body.title;
+        const user = req.body.user;
+
+        createForum({slug, title, user})
+            .then(result => {
+                res.status(201).send(result.rows[0]);
+            })
+            .catch(error => {
+                if (error.constraint === 'forums_user_fkey') {
+                    res.status(404).send({
+                        'message' : `Can't find user with nickname: ${user}`
+                    });
+                } else {
+                    return getForumBySlug({slug});
+                }
+            })
+            .then(result => {
+                if(result) {
+                    res.status(409).send(result.rows[0]);
+                }
+            })
+    })
+
+    app.get('/api/forum/:slug/details', (req, res) => {
+        const slug = req.params.slug;
+        getForumDetailsBySlug({slug})
+            .then(result => {
+                result.rowCount ?
+                    res.status(200).send(result.rows[0]) :
+                    res.status(404).send({
+                        'message': `Can't find user with id #${slug}\n`,
+                    });
+            })
+            .catch(() => {
+                res.status(404).send({
+                    'message': `Can't find user with id #${slug}\n`,
+                });
+            })
+    })
+
+    const port = 5000;
+    return app.listen(port, function () {
+        console.log(`Example app listening on port ${port} with worker ${worker.id}`);
+    });
 });
+

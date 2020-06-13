@@ -2,7 +2,7 @@ FROM ubuntu:18.04
 
 
 
-MAINTAINER Howle
+MAINTAINER Alexandr
 
 ENV TZ=Russia/Moscow
 
