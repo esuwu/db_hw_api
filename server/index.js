@@ -19,18 +19,18 @@ const pool = new Pool({
                     /* NEW TEST SECTION */
 // ================================================================
 async function createForumUserRelations(forumUserPairs){
-    var queryString = "INSERT INTO forumusers(forum, nickname) VALUES ";
+    let queryString = "INSERT INTO forumusers(forum, nickname) VALUES ";
 
-    var values = '';
-    var tmp_index = 1;
+    let values = '';
+    let tmp_index = 1;
 
-    var insertionData = [];
+    let insertionData = [];
 
-    for (var [index1, data] of forumUserPairs.entries()){
+    for (let [index1, data] of forumUserPairs.entries()){
         
-        var keys = Object.keys(data);
+        let keys = Object.keys(data);
         values += "(";
-        for (var [index, key] of keys.entries()){
+        for (let [index, key] of keys.entries()){
             values +=  "$" + (tmp_index);
             if ((index + 2) <= keys.length){
                 values += ', ';            
@@ -232,8 +232,8 @@ async function createThread(data = {}) {
                                    [data.author, data.created, data.forum, data.message, data.title]);
         }
 
-        createForumUserRelations([[data.forum, data.author]]);
-        updateThreadsCountBySlug({count: res.rowCount, slug: data.forum});
+        createForumUserRelations([[data.forum, data.author]]).catch(()=>{});
+        updateThreadsCountBySlug({count: res.rowCount, slug: data.forum}).catch(()=>{});
 
         return res;
     } catch(err) {
@@ -432,8 +432,8 @@ async function createThreads(data = {}) {
             forumUserPairs.push([res.rows[k].forum, res.rows[k].author]);
         }
 
-        createForumUserRelations(forumUserPairs);
-        updatePostsCountBySlug({count: res.rowCount, slug: res.rows[0].forum});
+        createForumUserRelations(forumUserPairs).catch(()=>{});
+        updatePostsCountBySlug({count: res.rowCount, slug: res.rows[0].forum}).catch(()=>{});
         
         return res;
     } catch(err) {
@@ -859,7 +859,10 @@ const port = process.env.PORT || 5000;
 
 
 
+
+
 cluster(function(worker) {
+
     const app = express();
 
     // app.addContentTypeParser('application/json', { parseAs: 'string' }, function(request, body, done) {
@@ -1129,6 +1132,9 @@ cluster(function(worker) {
                     }
                     res.status(200).send(result.rows);
                 })
+                .catch(() => {
+
+                })
         } else if (sort === 'parent_tree') {
             parentTreeSort({desc, limit, since, slug_or_id})
                 .then(result => {
@@ -1138,6 +1144,9 @@ cluster(function(worker) {
                         });
                     }
                     res.status(200).send(result.rows);
+                })
+                .catch(() => {
+
                 })
         } else {
             res.status(404).send({
@@ -1231,6 +1240,9 @@ cluster(function(worker) {
                 if (result) {
                     res.status(409).send(result.rows[0]);
                 }
+            })
+            .catch(() => {
+
             })
     })
 
@@ -1354,6 +1366,9 @@ cluster(function(worker) {
                     res.status(409).send(result.rows[0]);
                 }
             })
+            .catch(() => {
+
+            })
     })
 
     app.get('/api/forum/:slug/details', (req, res) => {
@@ -1378,4 +1393,3 @@ cluster(function(worker) {
         console.log(`Example app listening on port ${port} with worker ${worker.id}`);
     });
 });
-

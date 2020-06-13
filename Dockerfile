@@ -1,23 +1,24 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 
 
 MAINTAINER Alexandr
 
+RUN apt-get -y update && apt-get install -y tzdata
+
 ENV TZ=Russia/Moscow
-
-
-
-
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+
+
 # Обвновление списка пакетов
 RUN apt-get -y update
 
 #
 # Установка postgresql
 #
-ENV PGVER 10
-RUN apt-get install -y postgresql-$PGVER gnupg2
+ENV PGVER 12
+RUN apt-get install -y postgresql-$PGVER
 
 # Run the rest of the commands as the ``postgres`` user created by the ``postgres-$PGVER`` package when it was ``apt-get installed``
 USER postgres
@@ -65,7 +66,7 @@ USER root
 #
 
 RUN apt-get install -y curl
-RUN curl —silent —location https://deb.nodesource.com/setup_8.x | bash -
+RUN curl —silent —location https://deb.nodesource.com/setup_12.x | bash -
 RUN apt-get install -y nodejs
 RUN apt-get install -y build-essential
 
