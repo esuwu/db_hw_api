@@ -41,7 +41,7 @@ CREATE UNLOGGED TABLE threads (
     votes    INT            DEFAULT 0
 );
 
-CREATE UNIQUE INDEX idx_voteth_thrnick ON voteThreads USING btree (id, author);
+
 
 CREATE SEQUENCE IF NOT EXISTS posts_id_seq START 1;
 
@@ -65,7 +65,7 @@ CREATE UNLOGGED TABLE votes (
     thread   INT    REFERENCES threads(id)     NOT NULL
 );
 
-
+CREATE UNIQUE INDEX idx_voteth_thrnick ON votes USING btree (id, author);
 CREATE UNLOGGED TABLE IF NOT EXISTS forumusers (
 	forum            CITEXT       NOT NULL,
 	nickname         CITEXT       NOT NULL
