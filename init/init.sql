@@ -87,6 +87,8 @@ DROP INDEX IF EXISTS idx_posts_paths;
 DROP INDEX IF EXISTS idx_posts_thread_path;
 DROP INDEX IF EXISTS idx_posts_thread_id_created;
 DROP INDEX IF EXISTS idx_votes_thread_nickname;
+DROP INDEX IF EXISTS idx_forums_slug_hash;
+
 
 DROP INDEX IF EXISTS idx_fu_user;
 DROP INDEX IF EXISTS idx_fu_forum;
@@ -94,7 +96,10 @@ CREATE INDEX idx_forums_slug_hash ON forums USING hash (slug);
 
 CREATE INDEX IF NOT EXISTS idx_fu_user ON forumusers (forum, nickname);
 CREATE INDEX IF NOT EXISTS idx_fu_forum ON forumusers (forum);
+
 CLUSTER forums USING idx_forums_slug_hash;
+CREATE INDEX idx_forums_slug_hash ON forums USING hash (slug);
+
 CREATE INDEX IF NOT EXISTS idx_users_nickname ON users (nickname);
 
 CREATE INDEX IF NOT EXISTS idx_forums_slug ON forums (slug);
