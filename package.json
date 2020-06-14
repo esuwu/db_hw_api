@@ -1,18 +1,16 @@
 {
-  "name": "db_forum",
+  "name": "db",
   "version": "1.0.0",
-  "description": "",
-  "main": "server/index.js",
+  "description": "SUBD course",
+  "main": "index.js",
   "scripts": {
-    "start": "NODE_ENV=dev node server/index.js",
-    "docker": "NODE_ENV=prod node server/index.js",
+    "start": "node server",
+    "restart": "psql -h localhost -d forum -U me -W me -p 5432 -a -q -f ./init/clear.sql && psql -h localhost -d forum -U me -W me -p 5432 -a -q -f ./init/init.sql",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sanya554455/db_hw_api.git"
-  },
-
+  "keywords": [],
+  "author": "Alexandr Dolgavin",
+  "license": "ISC",
   "dependencies": {
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
