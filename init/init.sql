@@ -1,4 +1,3 @@
-
 ALTER SYSTEM SET checkpoint_completion_target = '0.9';
 ALTER SYSTEM SET wal_buffers = '6912kB';
 ALTER SYSTEM SET default_statistics_target = '100';
@@ -15,119 +14,159 @@ ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
 
 CREATE EXTENSION IF NOT EXISTS CITEXT;
 
-CREATE UNLOGGED TABLE users (
-    nickname CITEXT  PRIMARY KEY,
-    about TEXT, 
-    email CITEXT UNIQUE, 
-    fullname VARCHAR(100)
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS forums CASCADE;
+DROP TABLE IF EXISTS threads CASCADE;
+DROP TABLE IF EXISTS posts CASCADE;
+DROP TABLE IF EXISTS votes CASCADE;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    nickname CITEXT COLLATE "ucs_basic" NOT NULL UNIQUE,
+    fullname TEXT NOT NULL,
+    email CITEXT NOT NULL UNIQUE,
+    about TEXT
 );
 
-CREATE UNLOGGED TABLE forums (
-    slug     CITEXT        PRIMARY KEY, 
-    title    VARCHAR(100) NOT NULL, 
-    "user"   CITEXT        REFERENCES users(nickname) NOT NULL,
-    posts    BIGINT        DEFAULT 0,
-    threads  BIGINT        DEFAULT 0
-);
-
-CREATE UNLOGGED TABLE threads (
-    id       SERIAL         PRIMARY KEY, 
-    author   CITEXT         REFERENCES users(nickname), 
-    created  TIMESTAMP WITH TIME ZONE, 
-    forum    CITEXT         REFERENCES forums(slug) NOT NULL, 
-    message  TEXT, 
-    slug     CITEXT         UNIQUE, 
-    title    VARCHAR(100), 
-    votes    INT            DEFAULT 0
-);
-
-
-
-CREATE SEQUENCE IF NOT EXISTS posts_id_seq START 1;
-
-CREATE UNLOGGED TABLE posts (
-    id          SERIAL      PRIMARY KEY, 
-    author      CITEXT      REFERENCES users(nickname), 
-    created     TIMESTAMP WITH TIME ZONE   DEFAULT NOW(), 
-    forum       CITEXT      REFERENCES forums(slug), 
-    isEdited    BOOLEAN     DEFAULT false, 
-    message     TEXT, 
-    parent      INT         DEFAULT NULL, 
-    thread      INT         NOT NULL REFERENCES threads(id),
-    pathtopost  INT         ARRAY
-);
-
-ALTER SEQUENCE posts_id_seq OWNED BY posts.id;
-
-CREATE UNLOGGED TABLE votes (
-    nickname CITEXT REFERENCES users(nickname) NOT NULL, 
-    voice    INT                               NOT NULL, 
-    thread   INT    REFERENCES threads(id)     NOT NULL
-);
-
-CREATE UNIQUE INDEX idx_voteth_thrnick ON votes USING btree (id, author);
-CREATE UNLOGGED TABLE IF NOT EXISTS forumusers (
-	forum            CITEXT       NOT NULL,
-	nickname         CITEXT       NOT NULL
-);
-
-ALTER TABLE forumusers
-ADD CONSTRAINT unique_forum_user_pair UNIQUE (forum, nickname);
-
-DROP INDEX IF EXISTS idx_users_nickname;
-DROP INDEX IF EXISTS idx_users_nickname_email;
-DROP INDEX IF EXISTS idx_forums_slug;
-DROP INDEX IF EXISTS idx_threads_id;
-DROP INDEX IF EXISTS idx_threads_slug;
-DROP INDEX IF EXISTS idx_threads_created_forum;
-DROP INDEX IF EXISTS idx_posts_id;
-DROP INDEX IF EXISTS idx_posts_thread_id;
-DROP INDEX IF EXISTS idx_posts_thread_id0;
-DROP INDEX IF EXISTS idx_posts_thread_path1_id;
-DROP INDEX IF EXISTS idx_posts_thread_path_parent;
-DROP INDEX IF EXISTS idx_posts_thread;
-DROP INDEX IF EXISTS idx_posts_path_AA;
-DROP INDEX IF EXISTS idx_posts_path_AD;
-DROP INDEX IF EXISTS idx_posts_path_DA;
-DROP INDEX IF EXISTS idx_posts_path_DD;
-DROP INDEX IF EXISTS idx_posts_path_desc;
-DROP INDEX IF EXISTS idx_posts_paths;
-DROP INDEX IF EXISTS idx_posts_thread_path;
-DROP INDEX IF EXISTS idx_posts_thread_id_created;
-DROP INDEX IF EXISTS idx_votes_thread_nickname;
-DROP INDEX IF EXISTS idx_forums_slug_hash;
-
-
-DROP INDEX IF EXISTS idx_fu_user;
-DROP INDEX IF EXISTS idx_fu_forum;
-CREATE INDEX idx_forums_slug_hash ON forums USING hash (slug);
-
-CREATE INDEX IF NOT EXISTS idx_fu_user ON forumusers (forum, nickname);
-CREATE INDEX IF NOT EXISTS idx_fu_forum ON forumusers (forum);
-
-CLUSTER forums USING idx_forums_slug_hash;
-CREATE INDEX idx_forums_slug_hash ON forums USING hash (slug);
-
-CREATE INDEX IF NOT EXISTS idx_users_nickname ON users (nickname);
-
-CREATE INDEX IF NOT EXISTS idx_forums_slug ON forums (slug);
-
-CREATE INDEX IF NOT EXISTS idx_threads_id ON threads (id);
-CREATE INDEX IF NOT EXISTS idx_threads_slug ON threads (slug);
-CREATE INDEX IF NOT EXISTS idx_threads_forum ON threads (forum);
-CLUSTER threads USING idx_threads_fslugdate;
 CLUSTER users USING idx_users_all;
 
-CREATE INDEX IF NOT EXISTS idx_posts_forum ON posts (forum);
-CREATE INDEX IF NOT EXISTS idx_posts_id ON posts (id);
+CREATE INDEX users__nickname ON users(id);
 
-CREATE INDEX idx_threads_slughash ON threads USING hash (slug);
-CREATE INDEX idx_threads_tidhash ON threads USING hash (t_id);
-CREATE INDEX IF NOT EXISTS idx_posts_thread_path ON posts (thread, pathtopost);
-CREATE INDEX IF NOT EXISTS idx_posts_thread_id ON posts (thread, id);
-CREATE INDEX IF NOT EXISTS idx_posts_thread_id0 ON posts (thread, id) WHERE parent = 0;
-CREATE INDEX IF NOT EXISTS idx_posts_thread_id_created ON posts (id, created, thread);
-CREATE INDEX IF NOT EXISTS idx_posts_thread_path1_id ON posts (thread, (pathtopost[1]), id);
-CLUSTER messages USING idx_messages_path_1;
-CLUSTER forumUsers USING idx_forumusers_slug_nick;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_votes_thread_nickname ON votes (thread, nickname);
+CREATE TABLE forums (
+    id SERIAL PRIMARY KEY,
+    slug CITEXT NOT NULL UNIQUE,
+    posts INTEGER DEFAULT 0,
+    threads INTEGER DEFAULT 0,
+    title TEXT NOT NULL,
+    username CITEXT REFERENCES users (nickname) NOT NULL
+);
+
+CREATE INDEX forums__slug ON forums(slug);
+
+CREATE TABLE forum_user (
+    forum_slug CITEXT,
+    user_id INTEGER,
+    PRIMARY KEY (forum_slug, user_id)
+);
+
+CREATE INDEX forum_user__slug ON forum_user(forum_slug);
+
+CREATE TABLE threads (
+    id SERIAL PRIMARY KEY,
+    slug CITEXT UNIQUE,
+    username CITEXT REFERENCES users (nickname) NOT NULL,
+    forum_slug CITEXT REFERENCES forums (slug) NOT NULL,
+    created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    message TEXT,
+    title TEXT NOT NULL,
+    votes INTEGER DEFAULT 0
+);
+CLUSTER threads USING idx_threads_fslugdate;
+CREATE INDEX IF NOT EXISTS idx_threads_id ON threads (id);
+
+CREATE INDEX threads__forum_created ON threads(forum_slug, created);
+
+CREATE OR REPLACE FUNCTION insertThread()
+RETURNS TRIGGER AS
+$BODY$
+BEGIN
+    INSERT INTO forum_user (forum_slug, user_id)
+    VALUES (new.forum_slug, (SELECT id FROM users WHERE nickname = new.username))
+    ON CONFLICT DO NOTHING;
+
+    UPDATE forums SET threads = threads + 1
+    WHERE slug = new.forum_slug;
+    RETURN new;
+END;
+$BODY$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER insertThread
+AFTER INSERT
+ON threads
+FOR EACH ROW
+EXECUTE PROCEDURE insertThread();
+
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    username CITEXT REFERENCES users (nickname) NOT NULL,
+    created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    isEdited BOOLEAN DEFAULT FALSE,
+    message TEXT,
+    parent_id INTEGER REFERENCES posts (id),
+    thread_id INTEGER REFERENCES threads (id) NOT NULL,
+    path INTEGER ARRAY
+);
+
+CREATE OR REPLACE FUNCTION insertPost()
+RETURNS TRIGGER AS
+$BODY$
+    BEGIN
+        IF new.parent_id IS null THEN
+            UPDATE posts SET path = ARRAY[new.id]
+            WHERE id = new.id;
+        ELSE
+            UPDATE posts SET path = array_append((SELECT path FROM posts WHERE id = new.parent_id), new.id)
+            WHERE id = new.id;
+        END IF;
+        RETURN new;
+    END;
+$BODY$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER insertPost
+AFTER insert
+ON posts
+FOR EACH ROW
+EXECUTE PROCEDURE insertPost();
+
+CREATE INDEX posts__thread_id_created ON posts(thread_id, id, created);
+
+CREATE TABLE votes (
+    id SERIAL PRIMARY KEY,
+    username CITEXT REFERENCES users (nickname) NOT NULL,
+    thread_id INTEGER REFERENCES threads (id) NOT NULL,
+    voice INTEGER,
+    CONSTRAINT unique_vote UNIQUE (username, thread_id)
+);
+
+CREATE OR REPLACE FUNCTION insertVote()
+RETURNS TRIGGER AS
+$BODY$
+    BEGIN
+        UPDATE threads SET votes = votes + new.voice
+        WHERE id = new.thread_id;
+        RETURN new;
+    END;
+$BODY$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER insertVote
+AFTER INSERT
+ON votes
+FOR EACH ROW
+EXECUTE PROCEDURE insertVote();
+
+
+CREATE OR REPLACE FUNCTION updateVote()
+RETURNS TRIGGER AS
+$BODY$
+    BEGIN
+        IF old.voice = -1 AND new.voice = 1 THEN
+            UPDATE threads SET votes = votes + 2
+            WHERE id = new.thread_id;
+        END IF;
+        IF old.voice = 1 AND new.voice = -1 THEN
+            UPDATE threads SET votes = votes - 2
+            WHERE id = new.thread_id;
+        END IF;
+        RETURN NEW;
+    END;
+$BODY$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER updateVote
+AFTER UPDATE
+ON votes
+FOR EACH ROW
+EXECUTE PROCEDURE updateVote();
