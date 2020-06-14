@@ -1,11 +1,14 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 MAINTAINER Alexandr Dolgavin
 
-RUN apt-get -y update
+RUN apt-get -y update && apt-get install -y tzdata
+
+ENV TZ=Russia/Moscow
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 
-ENV PGVER 10
+ENV PGVER 12
 RUN apt-get install -y postgresql-$PGVER
 
 USER postgres
@@ -43,7 +46,7 @@ USER root
 
 RUN apt-get update && apt-get install -y \
 curl
-RUN curl -sL https://deb.nodesource.com/setup_9.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
 RUN apt-get install -y nodejs
 
 

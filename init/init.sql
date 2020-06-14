@@ -1,17 +1,3 @@
-ALTER SYSTEM SET checkpoint_completion_target = '0.9';
-ALTER SYSTEM SET wal_buffers = '6912kB';
-ALTER SYSTEM SET default_statistics_target = '100';
-ALTER SYSTEM SET random_page_cost = '1.1';
-ALTER SYSTEM SET effective_io_concurrency = '200';
-ALTER SYSTEM SET seq_page_cost = '0.1';
-ALTER SYSTEM SET random_page_cost = '0.1';
-
-ALTER SYSTEM SET max_worker_processes = '4';
-ALTER SYSTEM SET max_parallel_workers_per_gather = '2';
-ALTER SYSTEM SET max_parallel_workers = '4';
-ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
-
-
 CREATE EXTENSION IF NOT EXISTS CITEXT;
 
 DROP TABLE IF EXISTS users CASCADE;
@@ -28,9 +14,7 @@ CREATE TABLE users (
     about TEXT
 );
 
-CLUSTER users USING idx_users_all;
-
-CREATE INDEX users_nickname ON users(id);
+CREATE INDEX users__nickname ON users(id);
 
 CREATE TABLE forums (
     id SERIAL PRIMARY KEY,
@@ -41,7 +25,7 @@ CREATE TABLE forums (
     username CITEXT REFERENCES users (nickname) NOT NULL
 );
 
-CREATE INDEX forums_slug_idx ON forums(slug);
+CREATE INDEX forums__slug ON forums(slug);
 
 CREATE TABLE forum_user (
     forum_slug CITEXT,
@@ -49,7 +33,7 @@ CREATE TABLE forum_user (
     PRIMARY KEY (forum_slug, user_id)
 );
 
-CREATE INDEX forum_user_slug_idx ON forum_user(forum_slug);
+CREATE INDEX forum_user__slug ON forum_user(forum_slug);
 
 CREATE TABLE threads (
     id SERIAL PRIMARY KEY,
@@ -61,10 +45,8 @@ CREATE TABLE threads (
     title TEXT NOT NULL,
     votes INTEGER DEFAULT 0
 );
-CLUSTER threads USING idx_threads_fslugdate;
-CREATE INDEX IF NOT EXISTS idx_threads_id ON threads (id);
 
-CREATE INDEX threads_forum_created_idx ON threads(forum_slug, created);
+CREATE INDEX threads__forum_created ON threads(forum_slug, created);
 
 CREATE OR REPLACE FUNCTION insertThread()
 RETURNS TRIGGER AS
