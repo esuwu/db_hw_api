@@ -62,4 +62,4 @@ EXPOSE 5000
 
 
 ENV PGPASSWORD postgres
-CMD service postgresql start && psql -h localhost -d forum -U me -p 5432 -a -q -f ./init/init.sql && npm startg
+CMD service postgresql start && psql -h localhost -d forum -U me -p 5432 -a -q -f ./init/init.sql && npm start

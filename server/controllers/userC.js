@@ -1,5 +1,5 @@
 const usersModel = require('../models/usersM');
-const errors = require('../tools/errors');
+const errors = require('../../tools/errors');
 
 class userC {
 	static async createUser(req, res) {

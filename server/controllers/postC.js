@@ -1,5 +1,5 @@
 const model = require('../models/postsM');
-const errors = require('../tools/errors');
+const errors = require('../../tools/errors');
 
 class postC {
 	static async getDetails(req, res) {

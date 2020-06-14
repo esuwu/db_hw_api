@@ -1,4 +1,4 @@
-const db = require('../init/config');
+const db = require('../../init/config');
 
 class serviceM {
 	static async status() {

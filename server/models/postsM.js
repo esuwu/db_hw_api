@@ -1,5 +1,5 @@
-const db = require('../init/config');
-const errors = require('../tools/errors');
+const db = require('../../init/config');
+const errors = require('../../tools/errors');
 
 class postsM {
 	static async getDetails(id, params) {

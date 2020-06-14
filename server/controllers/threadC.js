@@ -1,5 +1,5 @@
 const model = require('../models/threadsM');
-const errors = require('../tools/errors');
+const errors = require('../../tools/errors');
 
 class threadC {
 	static async createPost(req, res) {

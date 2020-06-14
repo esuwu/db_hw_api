@@ -30,7 +30,7 @@ CREATE TABLE users (
 
 CLUSTER users USING idx_users_all;
 
-CREATE INDEX users__nickname ON users(id);
+CREATE INDEX users_nickname ON users(id);
 
 CREATE TABLE forums (
     id SERIAL PRIMARY KEY,
@@ -41,7 +41,7 @@ CREATE TABLE forums (
     username CITEXT REFERENCES users (nickname) NOT NULL
 );
 
-CREATE INDEX forums__slug ON forums(slug);
+CREATE INDEX forums_slug_idx ON forums(slug);
 
 CREATE TABLE forum_user (
     forum_slug CITEXT,
@@ -49,7 +49,7 @@ CREATE TABLE forum_user (
     PRIMARY KEY (forum_slug, user_id)
 );
 
-CREATE INDEX forum_user__slug ON forum_user(forum_slug);
+CREATE INDEX forum_user_slug_idx ON forum_user(forum_slug);
 
 CREATE TABLE threads (
     id SERIAL PRIMARY KEY,
@@ -64,7 +64,7 @@ CREATE TABLE threads (
 CLUSTER threads USING idx_threads_fslugdate;
 CREATE INDEX IF NOT EXISTS idx_threads_id ON threads (id);
 
-CREATE INDEX threads__forum_created ON threads(forum_slug, created);
+CREATE INDEX threads_forum_created_idx ON threads(forum_slug, created);
 
 CREATE OR REPLACE FUNCTION insertThread()
 RETURNS TRIGGER AS

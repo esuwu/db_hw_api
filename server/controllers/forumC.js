@@ -1,5 +1,5 @@
 const model = require('../models/forumsM');
-const errors = require('../tools/errors');
+const errors = require('../../tools/errors');
 
 class forumC {
 	static async createForum(req, res) {
