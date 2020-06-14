@@ -1,7 +1,7 @@
 const db = require('../init/config');
 const errors = require('../tools/errors');
 
-class postsModel {
+class postsM {
 	static async getDetails(id, params) {
 		try {
 			let query = 'SELECT p.username as post_author, p.created as post_created, p.id as post_id, p.isedited as post_isedited, ' +
@@ -97,4 +97,4 @@ class postsModel {
 	}
 }
 
-module.exports = postsModel;
+module.exports = postsM;

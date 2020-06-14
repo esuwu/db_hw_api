@@ -1,4 +1,4 @@
-const controller = require('../controllers/threadController');
+const controller = require('../controllers/threadC');
 const express = require('express');
 
 const router = express.Router();

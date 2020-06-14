@@ -1,4 +1,4 @@
-const controller  = require('../controllers/forumController');
+const controller  = require('../controllers/forumC');
 const express = require('express');
 
 const router = express.Router();

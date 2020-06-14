@@ -1,6 +1,6 @@
 const db = require('../init/config');
 
-class serviceModel {
+class serviceM {
 	static async status() {
 		const status = await db.one('SELECT ' +
 			'(SELECT COUNT(*) FROM forums) as forum, ' +
@@ -21,4 +21,4 @@ class serviceModel {
 	}
 }
 
-module.exports = serviceModel;
+module.exports = serviceM;

@@ -1,7 +1,7 @@
-const model = require('../models/threadsModel');
+const model = require('../models/threadsM');
 const errors = require('../tools/errors');
 
-class threadController {
+class threadC {
 	static async createPost(req, res) {
 		const slugOrId = req.params.slug_or_id;
 		const posts = req.body.map(post => {
@@ -13,8 +13,8 @@ class threadController {
 		});
 
 		try {
-			const savedPosts = await model.createPost(slugOrId, posts);
-			res.status(201).json(savedPosts);
+			const savePosts = await model.createPost(slugOrId, posts);
+			res.status(201).json(savePosts);
 		} catch (error) {
 			console.log(error);
 			if (error instanceof errors.NotFoundError) {
@@ -111,4 +111,4 @@ class threadController {
 	}
 }
 
-module.exports = threadController;
+module.exports = threadC;

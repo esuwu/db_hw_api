@@ -2,7 +2,7 @@ const pgp = require('pg-promise');
 const db = require('../init/config');
 const errors = require('../tools/errors');
 
-class usersModel {
+class usersM {
 	static async createUser(nickname, profile) {
 		try {
 			return await db.oneOrNone('INSERT INTO users(nickname, email, fullname, about) ' +
@@ -41,4 +41,4 @@ class usersModel {
 	}
 }
 
-module.exports = usersModel;
+module.exports = usersM;

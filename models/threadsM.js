@@ -1,7 +1,7 @@
 const db = require('../init/config');
 const errors = require('../tools/errors');
 
-class threadsModel {
+class threadsM {
 	static async createPost(slugOrId, posts) {
 		const numbersPattern = '^[0-9]+$';
 		let threadQuery = 'SELECT * FROM threads ';
@@ -289,4 +289,4 @@ class threadsModel {
 	}
 }
 
-module.exports = threadsModel;
+module.exports = threadsM;

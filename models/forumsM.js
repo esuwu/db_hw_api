@@ -2,7 +2,7 @@ const pgp = require('pg-promise');
 const db = require('../init/config');
 const errors = require('../tools/errors');
 
-class forumsModel {
+class forumsM {
 	static async createForum(forum) {
 		try {
 			const user = await db.one(`SELECT * FROM users WHERE nickname = '${forum.user}'`);
@@ -108,4 +108,4 @@ class forumsModel {
 	}
 }
 
-module.exports = forumsModel;
+module.exports = forumsM;

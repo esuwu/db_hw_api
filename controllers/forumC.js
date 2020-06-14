@@ -1,7 +1,7 @@
-const model = require('../models/forumsModel');
+const model = require('../models/forumsM');
 const errors = require('../tools/errors');
 
-class forumController {
+class forumC {
 	static async createForum(req, res) {
 		try {
 			const forum = await model.createForum(req.body);
@@ -21,7 +21,7 @@ class forumController {
 	}
 
 	static async createThread(req, res) {
-		const forumSlug = req.params.slug;
+		const slugforum = req.params.slug;
 		const thread = {
 			slug: null,
 			created: null,
@@ -29,7 +29,7 @@ class forumController {
 		};
 
 		try {
-			const savedThread = await model.createThread(forumSlug, thread);
+			const savedThread = await model.createThread(slugforum, thread);
 			res.status(201).json(savedThread);
 		} catch (error) {
 			console.log(error);
@@ -46,10 +46,10 @@ class forumController {
 	}
 
 	static async getDetails(req, res) {
-		const forumSlug = req.params.slug;
+		const slugforum = req.params.slug;
 
 		try {
-			const details = await model.getDetails(forumSlug);
+			const details = await model.getDetails(slugforum);
 			res.status(200).json(details);
 		} catch (error) {
 			if (error instanceof errors.NotFoundError) {
@@ -62,12 +62,12 @@ class forumController {
 	}
 
 	static async getThreads(req, res) {
-		const forumSlug = req.params.slug;
+		const slugforum = req.params.slug;
 		const {limit, since, desc} = req.query;
 		const params = {limit, since, desc};
 
 		try {
-			const threads = await model.getThreads(forumSlug, params);
+			const threads = await model.getThreads(slugforum, params);
 			res.status(200).json(threads);
 		} catch (error) {
 			if (error instanceof errors.NotFoundError) {
@@ -98,5 +98,5 @@ class forumController {
 	}
 }
 
-module.exports = forumController;
+module.exports = forumC;
 

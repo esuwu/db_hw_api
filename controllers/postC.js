@@ -1,12 +1,12 @@
-const model = require('../models/postsModel');
+const model = require('../models/postsM');
 const errors = require('../tools/errors');
 
-class postController {
+class postC {
 	static async getDetails(req, res) {
 		const id = req.params.id;
-		const related = req.query.related ? req.query.related.split(',') : [];
+		const connected = req.query.related ? req.query.related.split(',') : [];
 		let params = {};
-		related.forEach(param => params[param] = true);
+		connected.forEach(param => params[param] = true);
 
 		try {
 			const post = await model.getDetails(id, params);
@@ -22,13 +22,13 @@ class postController {
 
 	static async updateDetails(req, res) {
 		const id = req.params.id;
-		const post = {
+		const postDetail = {
 			message: null,
 			...req.body
 		};
 
 		try {
-			const updatedPost = await model.updateDetails(id, post);
+			const updatedPost = await model.updateDetails(id, postDetail);
 			res.status(200).json(updatedPost);
 		} catch (error) {
 			if (error instanceof  errors.NotFoundError) {
@@ -40,4 +40,4 @@ class postController {
 	}
 }
 
-module.exports = postController;
+module.exports = postC;

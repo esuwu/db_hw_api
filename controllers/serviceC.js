@@ -1,10 +1,10 @@
-const model = require('../models/serviceModel');
+const model = require('../models/serviceM');
 
-class serviceController {
+class serviceC {
 	static async status(req, res) {
 		try {
-			const status = await model.status();
-			res.status(200).json(status);
+			const stat = await model.status();
+			res.status(200).json(stat);
 		} catch(error) {
 			res.status(500).json({error: error});
 		}
@@ -20,4 +20,4 @@ class serviceController {
 	}
 }
 
-module.exports = serviceController;
+module.exports = serviceC;

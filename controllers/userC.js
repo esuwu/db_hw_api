@@ -1,13 +1,13 @@
-const usersModel = require('../models/usersModel');
+const usersModel = require('../models/usersM');
 const errors = require('../tools/errors');
 
-class userController {
+class userC {
 	static async createUser(req, res) {
-		const nickname = req.params.nickname;
+		const name = req.params.nickname;
 		const profile = req.body;
 
 		try {
-			const user = await usersModel.createUser(nickname, profile);
+			const user = await usersModel.createUser(name, profile);
 			res.status(201).json(user);
 		}
 		catch(error) {
@@ -20,10 +20,10 @@ class userController {
 	}
 
 	static async getProfile(req, res) {
-		const nickname = req.params.nickname;
+		const name = req.params.nickname;
 
 		try {
-			const user = await usersModel.getProfile(nickname);
+			const user = await usersModel.getProfile(name);
 			res.status(200).json(user);
 		}
 		catch (error) {
@@ -36,7 +36,7 @@ class userController {
 	}
 
 	static async updateProfile(req, res) {
-		const nickname = req.params.nickname;
+		const name = req.params.nickname;
 		const profile = {
 			fullname: null,
 			about: null,
@@ -45,7 +45,7 @@ class userController {
 		};
 
 		try {
-			const user = await usersModel.updateProfile(nickname, profile);
+			const user = await usersModel.updateProfile(name, profile);
 			res.status(200).json(user);
 		}
 		catch (error) {
@@ -64,4 +64,4 @@ class userController {
 	}
 }
 
-module.exports = userController;
+module.exports = userC;
