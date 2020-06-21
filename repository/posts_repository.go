@@ -1,9 +1,8 @@
 package repository
 
 import (
-	"fmt"
-	models "main/models"
 	"github.com/jackc/pgx"
+	models "main/models"
 	"net/http"
 	"strconv"
 )
@@ -18,7 +17,6 @@ func (store *DBStore) PutPost(post *models.Post) (uint64, *models.Error) {
 
 	err := rows.Scan(&ID)
 	if err != nil {
-		fmt.Println("ERROR: ", err)
 		return 0, models.NewError(http.StatusInternalServerError, err.Error())
 	}
 
@@ -48,7 +46,6 @@ func (store *DBStore) PutVote(vote *models.Vote) (uint64, *models.Error) {
 	tx, _ := store.DB.Begin()
 	defer tx.Rollback()
 
-	fmt.Println(vote)
 	var ID uint64
 	positive := vote.Voice == 1
 
@@ -57,7 +54,6 @@ func (store *DBStore) PutVote(vote *models.Vote) (uint64, *models.Error) {
 
 	err := rows.Scan(&ID)
 	if err != nil {
-		fmt.Println("ERROR: ", err)
 		return 0, models.NewError(http.StatusInternalServerError, "Can not put vote: "+err.Error())
 	}
 
@@ -66,7 +62,6 @@ func (store *DBStore) PutVote(vote *models.Vote) (uint64, *models.Error) {
 		vote.Voice, vote.ThreadID)
 
 	if err != nil {
-		fmt.Println("ERR: ", err.Error())
 		if pgerr, ok := err.(pgx.PgError); ok && pgerr.Code == "23505" {
 			return 0, models.NewError(http.StatusNotFound, err.Error())
 		}
@@ -79,7 +74,6 @@ func (store *DBStore) PutVote(vote *models.Vote) (uint64, *models.Error) {
 }
 
 func (store *DBStore) ChangePost(post *models.Post) *models.Error {
-	fmt.Println(post)
 
 	insertQuery := `UPDATE posts SET message=$1, isedited=$2 WHERE id=$3`
 	_, err := store.DB.Exec(insertQuery, post.Message, true, post.ID)
@@ -98,7 +92,6 @@ func (store *DBStore) UpdateVote(vote *models.Vote) (int, *models.Error) {
 	tempVote := -1
 	var tempVoice bool
 
-	fmt.Println(vote)
 
 	selectStr := "SELECT voice FROM votes WHERE authorid=$1 AND threadid=$2"
 	row := store.DB.QueryRow(selectStr, vote.AuthorID, vote.ThreadID)
@@ -106,7 +99,6 @@ func (store *DBStore) UpdateVote(vote *models.Vote) (int, *models.Error) {
 	err := row.Scan(&tempVoice)
 
 	if err != nil {
-		fmt.Println(err)
 		if err == pgx.ErrNoRows {
 			return 0, models.NewError(http.StatusConflict, err.Error())
 		}
@@ -136,7 +128,6 @@ func (store *DBStore) UpdateVote(vote *models.Vote) (int, *models.Error) {
 		tempVote, vote.ThreadID)
 
 	if err != nil {
-		fmt.Println("ERR: ", err.Error())
 		if pgerr, ok := err.(pgx.PgError); ok && pgerr.Code == "23505" {
 			return tempVote, models.NewError(http.StatusNotFound, err.Error())
 		}
@@ -236,11 +227,9 @@ func (store *DBStore) GetPostsByThreadID(threadID int64, params models.PostParam
 	}
 	selectStr += ";"
 
-	fmt.Println("НЕ ЖОПА", selectStr, curParams)
 
 	rows, err := store.DB.Query(selectStr, curParams...)
 	if err != nil {
-		fmt.Println("ЖОПА", selectStr, curParams)
 		return posts, models.NewError(http.StatusInternalServerError, err.Error())
 	}
 
@@ -256,7 +245,6 @@ func (store *DBStore) GetPostsByThreadID(threadID int64, params models.PostParam
 
 	rows.Close()
 
-	fmt.Println("ВЫВОД", selectStr, curParams)
 
 	return posts, nil
 }

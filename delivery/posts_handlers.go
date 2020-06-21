@@ -1,10 +1,8 @@
 package delivery
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"io/ioutil"
+	"github.com/valyala/fasthttp"
 	models "main/models"
 	"net/http"
 	"strconv"
@@ -12,26 +10,23 @@ import (
 	"time"
 )
 
-func (handlers *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
+func (handlers *Handlers) CreatePost(ctx *fasthttp.RequestCtx) {
 	var posts models.Posts
-	var err error
 	var tempID int
 	id := -1
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	err := posts.UnmarshalJSON(ctx.PostBody())
 
-	fmt.Println(string(body))
-	vars := mux.Vars(r)
-	slug_or_id := vars["slug_or_id"]
-
-	err = json.Unmarshal(body, &posts)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
+		ctx.SetContentType("application/json")
 		return
 	}
 
-	tempID, err = strconv.Atoi(slug_or_id)
+	slugOrId := ctx.UserValue("slug_or_id")
+	slugOrIdstr := fmt.Sprintf("%v", slugOrId)
+
+	tempID, err = strconv.Atoi(slugOrIdstr)
 	if err == nil {
 		id = tempID
 	}
@@ -46,11 +41,13 @@ func (handlers *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 			posts[i].Thread = int64(id)
 			postsAdded[i], e = handlers.usecases.PutPost(posts[i])
 		} else {
-			postsAdded[i], e = handlers.usecases.PutPostWithSlug(posts[i], slug_or_id)
+			postsAdded[i], e = handlers.usecases.PutPostWithSlug(posts[i], slugOrIdstr)
 		}
 		if e != nil {
-			body, _ = json.Marshal(e)
-			WriteResponse(w, body, e.Code)
+			body, _ := e.MarshalJSON()
+			ctx.SetStatusCode(e.Code)
+			ctx.SetContentType("application/json")
+			ctx.Write(body)
 			return
 		}
 	}
@@ -60,95 +57,110 @@ func (handlers *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 		if id != -1 {
 			_, e = handlers.usecases.GetThreadByID(int64(id))
 		} else {
-			_, e = handlers.usecases.GetThreadBySlug(slug_or_id)
+			_, e = handlers.usecases.GetThreadBySlug(slugOrIdstr)
 		}
 		if e != nil {
-			body, _ = json.Marshal(e)
-			WriteResponse(w, body, e.Code)
+			body, _ := e.MarshalJSON()
+			ctx.SetStatusCode(e.Code)
+			ctx.SetContentType("application/json")
+			ctx.Write(body)
 			return
 		}
 	}
-
-	body, _ = json.Marshal(postsAdded)
-	WriteResponse(w, body, http.StatusCreated)
+	body, _ := postsAdded.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusCreated)
+	ctx.Write(body)
 }
-
-func (handlers *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
+// POST /post/{id}/details
+func (handlers *Handlers) UpdatePost(ctx *fasthttp.RequestCtx) {
 	var setPost, post models.Post
 	var e *models.Error
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	err := setPost.UnmarshalJSON(ctx.PostBody())
 
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-
-	id, err := strconv.Atoi(idStr)
-
-	err = json.Unmarshal(body, &setPost)
 	if err != nil {
-		http.Error(w, "unmarshal error", http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
+
+
+	idInterface := ctx.UserValue("id")
+	idStr := fmt.Sprintf("%v", idInterface)
+	id, err := strconv.Atoi(idStr)
 
 	setPost.ID = int64(id)
 
 	post, e = handlers.usecases.ChangePost(&setPost)
 	if e != nil {
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, e.Code)
+		body, _ := e.MarshalJSON()
+		ctx.SetStatusCode(e.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	body, _ = json.Marshal(post)
-	WriteResponse(w, body, http.StatusOK)
+	body, _ := post.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusOK)
+	ctx.Write(body)
 }
+// GET /post/{id}/details
+func (handlers *Handlers) GetPostFull(ctx *fasthttp.RequestCtx) {
 
-func (handlers *Handlers) GetPostFull(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
+
+	idInterface := ctx.UserValue("id")
+	idStr := fmt.Sprintf("%v", idInterface)
 
 	id, _ := strconv.Atoi(idStr)
 
-	fields := strings.Split(r.URL.Query().Get("related"), ",")
-	fmt.Println("RELATED???:", fields)
+	key := ctx.QueryArgs().Peek("related")
+	fields := strings.Split(string(key), ",")
 
 	postFull, err := handlers.usecases.GetPostFull(int64(id), fields)
 	if err != nil {
-		body, _ := json.Marshal(err)
-		WriteResponse(w, body, err.Code)
+		body, _ := err.MarshalJSON()
+		ctx.SetStatusCode(err.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	fmt.Println(postFull)
-
-	body, _ := json.Marshal(postFull)
-	WriteResponse(w, body, http.StatusOK)
+	body, _ := postFull.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusOK)
+	ctx.Write(body)
 }
 
-func (handlers *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
+func (handlers *Handlers) GetPosts(ctx *fasthttp.RequestCtx) {
 	var posts models.Posts
 	var e *models.Error
 
-	vars := mux.Vars(r)
-	slug_or_id := vars["slug_or_id"]
 
-	query := r.URL.Query()
+	slug_or_idInterface := ctx.UserValue("slug_or_id")
+	slug_or_id := fmt.Sprintf("%v", slug_or_idInterface)
+
+	getLimit := ctx.QueryArgs().Peek("limit")
+	getSince := ctx.QueryArgs().Peek("since")
+	getSort := ctx.QueryArgs().Peek("sort")
+	getDesc := ctx.QueryArgs().Peek("desc")
+
 	var params models.PostParams
 	var err error
 
-	params.Limit, err = strconv.Atoi(query.Get("limit"))
+	params.Limit, err = strconv.Atoi(string(getLimit))
+
 	if err != nil {
 		params.Limit = -1
 	}
-	params.Since, err = strconv.Atoi(query.Get("since"))
+	params.Since, err = strconv.Atoi(string(getSince))
 	if err != nil {
 		params.Since = -1
 	}
 	fmt.Println("SINCE: ", params.Since)
-	params.Desc = query.Get("desc") == "true"
+	params.Desc = string(getDesc) == "true"
 
-	switch query.Get("sort") {
+	switch string(getSort) {
 	case "flat":
 		params.Sort = models.Flat
 	case "tree":
@@ -163,31 +175,33 @@ func (handlers *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 		posts, e = handlers.usecases.GetPostsByThreadSlug(slug_or_id, params)
 	}
 	if e != nil {
-		body, _ := json.Marshal(e)
-		WriteResponse(w, body, e.Code)
+		body, _ := e.MarshalJSON()
+		ctx.SetStatusCode(e.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	fmt.Println(posts)
 
-	body, _ := json.Marshal(posts)
-	WriteResponse(w, body, http.StatusOK)
+	body, _ := posts.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusOK)
+	ctx.Write(body)
 }
 
-func (handlers *Handlers) Vote(w http.ResponseWriter, r *http.Request) {
+func (handlers *Handlers) Vote(ctx *fasthttp.RequestCtx) {
 	var vote models.Vote
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	err := vote.UnmarshalJSON(ctx.PostBody())
 
-	fmt.Println(string(body))
-	vars := mux.Vars(r)
-	slug_or_id := vars["slug_or_id"]
-
-	err := json.Unmarshal(body, &vote)
 	if err != nil {
 
 	}
+
+
+	slug_or_idInterface := ctx.UserValue("slug_or_id")
+	slug_or_id := fmt.Sprintf("%v", slug_or_idInterface)
+
 
 	var thread models.Thread
 	var e *models.Error
@@ -199,11 +213,15 @@ func (handlers *Handlers) Vote(w http.ResponseWriter, r *http.Request) {
 		thread, e = handlers.usecases.PutVoteWithSlug(&vote, slug_or_id)
 	}
 	if e != nil {
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, http.StatusNotFound)
+		body, _ := e.MarshalJSON()
+		ctx.SetStatusCode(http.StatusNotFound)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	body, _ = json.Marshal(thread)
-	WriteResponse(w, body, http.StatusOK)
+	body, _ := thread.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusOK)
+	ctx.Write(body)
 }

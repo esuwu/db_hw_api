@@ -3,6 +3,7 @@ package delivery
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/valyala/fasthttp"
 	useCase2 "main/usecase"
 	"net/http"
 )
@@ -23,17 +24,16 @@ func WriteResponse(w http.ResponseWriter, body []byte, code int) {
 	w.Write(body)
 }
 
-func (handlers *Handlers) GetStatus(w http.ResponseWriter, r *http.Request) {
+func (handlers *Handlers) GetStatus(ctx *fasthttp.RequestCtx) {
 	status, _ := handlers.usecases.GetStatus()
 
 	fmt.Println(status)
 
 	body, _ := json.Marshal(status)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(body)
+	ctx.Response.Header.Set("Content-Type", "application/json")
+	ctx.Write(body)
 }
 
-func (handlers *Handlers) Clear(w http.ResponseWriter, r *http.Request) {
+func (handlers *Handlers) Clear(ctx *fasthttp.RequestCtx) {
 	handlers.usecases.RemoveAllData()
 }

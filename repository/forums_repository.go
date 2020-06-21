@@ -1,14 +1,12 @@
 package repository
 
 import (
-	"fmt"
-	models "main/models"
 	"github.com/jackc/pgx"
+	models "main/models"
 	"net/http"
 )
 
 func (store *DBStore) PutForum(forum *models.Forum) (uint64, *models.Error) {
-	fmt.Println(forum)
 	var ID uint64
 
 	insertQuery := `INSERT INTO forums (slug, title, authorid) VALUES ($1, $2, $3) RETURNING id`
@@ -35,7 +33,6 @@ func (store *DBStore) GetForumBySlug(slug string) (models.Forum, *models.Error) 
 	err := row.Scan(&forum.ID, &forum.Slug, &forum.Title, &forum.OwnerID)
 
 	if err != nil {
-		fmt.Println(err)
 		if err == pgx.ErrNoRows {
 			return *forum, models.NewError(http.StatusNotFound, err.Error())
 		}
@@ -67,7 +64,6 @@ func (store *DBStore) GetForumByID(id int64) (models.Forum, *models.Error) {
 	err := row.Scan(&forum.ID, &forum.Slug, &forum.Title, &forum.OwnerID)
 
 	if err != nil {
-		fmt.Println(err)
 		if err == pgx.ErrNoRows {
 			return *forum, models.NewError(http.StatusNotFound, err.Error())
 		}

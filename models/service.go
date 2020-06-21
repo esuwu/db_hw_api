@@ -19,6 +19,13 @@ CREATE TABLE users
     fullname TEXT
 );
 
+CREATE INDEX users_covering_index ON users (nickname, email, about, fullname);
+
+CREATE UNIQUE INDEX users_nickname_index ON users (nickname);
+
+CREATE UNIQUE INDEX users_email_index ON users (email);
+
+CREATE INDEX ON users (nickname, email);
 
 
 DROP TABLE IF EXISTS forums CASCADE;
@@ -31,6 +38,11 @@ CREATE TABLE forums
     FOREIGN KEY (authorID) REFERENCES users (ID) ON DELETE CASCADE
 );
 
+CREATE UNIQUE INDEX forum_slug_index ON forums (slug);
+
+CREATE INDEX forum_slug_id_index ON forums (slug, ID);
+
+CREATE INDEX on forums (slug, ID, title, authorID);
 
 DROP TABLE IF EXISTS threads CASCADE;
 CREATE TABLE threads
@@ -48,6 +60,21 @@ CREATE TABLE threads
     FOREIGN KEY (authorID) REFERENCES users (ID) ON DELETE CASCADE,
     FOREIGN KEY (forumID) REFERENCES forums (ID) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX thread_slug_index
+  ON threads (slug);
+
+CREATE INDEX thread_slug_id_index
+  ON threads (slug, ID);
+
+CREATE INDEX thread_forum_id_created_index
+  ON threads (forumID, created);
+
+CREATE INDEX thread_forum_id_created_index2
+  ON threads (forumID, created DESC);
+
+CREATE UNIQUE INDEX thread_covering_index
+  ON threads (forumID, created, ID, slug, title, message, created, vote);
 
 
 DROP TABLE IF EXISTS posts CASCADE;
@@ -68,6 +95,14 @@ CREATE TABLE posts
     FOREIGN KEY (forumID) REFERENCES forums (ID) ON DELETE CASCADE
     --FOREIGN KEY (parentID) REFERENCES posts (ID) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_messages_tid_mid ON posts (threadID, ID);
+CREATE INDEX idx_messages_parent_tree_tid_parent ON posts (threadID, ID) WHERE parentID = 0;
+CREATE INDEX idx_messages_all ON posts (ID, created, message, isEdited, parentID, threadID);
+
+CREATE INDEX posts_thread_id_index2 ON posts (threadID);
+
+CREATE INDEX posts_thread_id_parents_index ON posts (threadID, parents);
 
 
 DROP TABLE IF EXISTS votes CASCADE;

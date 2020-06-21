@@ -126,7 +126,7 @@ func (store *DBStore) GetThreadByID(id int64) (models.Thread, *models.Error) {
 	}
 
 	if err != nil {
-		fmt.Println(err)
+
 		if err == pgx.ErrNoRows {
 			return *thread, models.NewError(http.StatusNotFound, err.Error())
 		}
@@ -137,7 +137,7 @@ func (store *DBStore) GetThreadByID(id int64) (models.Thread, *models.Error) {
 }
 
 func (store *DBStore) UpdateThreadWithSlug(thread *models.Thread) *models.Error {
-	fmt.Println(thread)
+
 
 	insertQuery := `UPDATE threads SET message=$1, title=$2 WHERE slug=$3`
 	_, err := store.DB.Exec(insertQuery,
@@ -151,7 +151,6 @@ func (store *DBStore) UpdateThreadWithSlug(thread *models.Thread) *models.Error 
 }
 
 func (store *DBStore) UpdateThreadWithID(thread *models.Thread) *models.Error {
-	fmt.Println(thread)
 
 	insertQuery := `UPDATE threads SET message=$1, title=$2 WHERE id=$3`
 	_, err := store.DB.Exec(insertQuery,

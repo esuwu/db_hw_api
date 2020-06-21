@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"regexp"
 )
-
+//easyjson:json
 type User struct {
 	ID       int64  `json:"-"`
 	About    string `json:"about"`
@@ -13,15 +13,16 @@ type User struct {
 	Fullname string `json:"fullname"`
 	Nickname string `json:"nickname"`
 }
-
+//easyjson:json
 type Users []*User
 
+//easyjson:json
 type UserParams struct {
 	Limit int
 	Since string
 	Desc  bool
 }
-
+//easyjson:json
 type UpdateUserFields struct {
 	About    *string `json:"about"`
 	Email    *string `json:"email"`

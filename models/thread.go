@@ -1,7 +1,7 @@
 package models
 
 import "time"
-
+//easyjson:json
 type Thread struct {
 	Author   string     `json:"author"`
 	Created  *time.Time `json:"created"`
@@ -14,16 +14,16 @@ type Thread struct {
 	AuthorID int64      `json:"-"`
 	ForumID  int64      `json:"-"`
 }
-
+//easyjson:json
 type Threads []*Thread
-
+//easyjson:json
 type Vote struct {
 	Nickname string `json:"nickname"`
 	Voice    int    `json:"voice"`
 	ThreadID int64  `json:"-"`
 	AuthorID int64  `json:"-"`
 }
-
+//easyjson:json
 type ThreadParams struct {
 	Limit int
 	Since time.Time

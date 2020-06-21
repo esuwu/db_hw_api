@@ -1,5 +1,6 @@
 package models
 
+//easyjson:json
 type Forum struct {
 	ID      int64  `json:"-"`
 	Slug    string `json:"slug"`

@@ -3,119 +3,139 @@ package delivery
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"io/ioutil"
+	"github.com/valyala/fasthttp"
 	models "main/models"
 	"net/http"
 	"strconv"
 )
 
-func (handlers *Handlers) CreateUser(w http.ResponseWriter, r *http.Request) {
+
+func (handlers *Handlers) CreateUser(ctx *fasthttp.RequestCtx) {
 	var user models.User
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	err := user.UnmarshalJSON(ctx.PostBody())
 
-	fmt.Println(string(body))
-	vars := mux.Vars(r)
-	nickname := vars["nickname"]
-
-	err := json.Unmarshal(body, &user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ctx.Error(err.Error(), http.StatusInternalServerError)
+		return
+	}
+	nicknameInterface := ctx.UserValue("nickname")
+	nickname := fmt.Sprintf("%v", nicknameInterface)
+
+
+	if err != nil {
+		ctx.Error(err.Error(), http.StatusInternalServerError)
 		return
 	}
 	user.Nickname = nickname
 
 	users, e := handlers.usecases.PutUser(&user)
 	if e != nil {
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, e.Code)
-		//http.Error(w, e.Message, e.Code)
+		body, _ := e.MarshalJSON()
+		ctx.SetStatusCode(e.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
+
 		return
 	}
 	if users != nil {
-		body, _ = json.Marshal(users)
-		WriteResponse(w, body, http.StatusConflict)
+		body, _ := users.MarshalJSON()
+		ctx.SetStatusCode(http.StatusConflict)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
-	body, err = json.Marshal(user)
-	//http.Error(w, err.Error(), http.StatusInternalServerError)
-
-	WriteResponse(w, body, http.StatusCreated)
+	body, _ := user.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusCreated)
+	ctx.Write(body)
 }
 
-func (handlers *Handlers) GetUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	nickname := vars["nickname"]
+func (handlers *Handlers) GetUser(ctx *fasthttp.RequestCtx) {
+	nicknameInterface := ctx.UserValue("nickname")
+	nickname := fmt.Sprintf("%v", nicknameInterface)
 
 	user, err := handlers.usecases.GetUserByNickname(nickname)
 	if err != nil {
 		body, _ := json.Marshal(err)
-		WriteResponse(w, body, err.Code)
+		ctx.SetStatusCode(err.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	body, _ := json.Marshal(user)
-
-	WriteResponse(w, body, http.StatusOK)
+	body, _ := user.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusOK)
+	ctx.Write(body)
 }
 
-func (handlers *Handlers) UpdateUser(w http.ResponseWriter, r *http.Request) {
+func (handlers *Handlers) UpdateUser(ctx *fasthttp.RequestCtx) {
 	var userUpd models.UpdateUserFields
 	var e *models.Error
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	err := userUpd.UnmarshalJSON(ctx.PostBody())
 
-	fmt.Println(string(body))
-	vars := mux.Vars(r)
-	nickname := vars["nickname"]
-
-	err := json.Unmarshal(body, &userUpd)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ctx.Error(err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	nicknameInterface := ctx.UserValue("nickname")
+	nickname := fmt.Sprintf("%v", nicknameInterface)
+
+
+	if err != nil {
+		ctx.Error(err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	user, e := handlers.usecases.ChangeUser(&userUpd, nickname)
 	if e != nil {
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, e.Code)
+		body, _ := e.MarshalJSON()
+		ctx.SetStatusCode(e.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	body, _ = json.Marshal(user)
-
-	WriteResponse(w, body, http.StatusOK)
+	body, _ := user.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusOK)
+	ctx.Write(body)
 }
 
-func (handlers *Handlers) GetUsers(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	slug := vars["slug"]
+func (handlers *Handlers) GetUsers(ctx *fasthttp.RequestCtx) {
 
-	query := r.URL.Query()
+	slugInterface := ctx.UserValue("slug")
+	slug := fmt.Sprintf("%v", slugInterface)
+
+	getLimit := ctx.QueryArgs().Peek("limit")
+	getSince := ctx.QueryArgs().Peek("since")
+	getDesc := ctx.QueryArgs().Peek("desc")
+
 	var params models.UserParams
 	var err error
 
-	params.Limit, err = strconv.Atoi(query.Get("limit"))
+	params.Limit, err = strconv.Atoi(string(getLimit))
 	if err != nil {
 		params.Limit = -1
 	}
-	params.Since = query.Get("since")
+	params.Since = string(getSince)
 	fmt.Println("SINCE: ", params.Since)
-	params.Desc = query.Get("desc") == "true"
+	params.Desc = string(getDesc) == "true"
 
 	users, e := handlers.usecases.GetUsersByForum(slug, params)
 	if e != nil {
-		body, _ := json.Marshal(e)
-		WriteResponse(w, body, e.Code)
+		body, _ := e.MarshalJSON()
+		ctx.SetStatusCode(e.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	fmt.Println(users)
-
-	body, _ := json.Marshal(users)
-
-	WriteResponse(w, body, http.StatusOK)
+	body, _ := users.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusOK)
+	ctx.Write(body)
 }

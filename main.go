@@ -7,12 +7,41 @@ import (
 	models "main/models"
 	repository "main/repository"
 	useCase "main/usecase"
-	"github.com/gorilla/mux"
 	"github.com/jackc/pgx"
 	_ "github.com/lib/pq"
 	"log"
-	"net/http"
+	"github.com/valyala/fasthttp"
+	"github.com/buaazp/fasthttprouter"
 )
+
+func RouterInit(api *delivery.Handlers) *fasthttprouter.Router {
+
+	r := fasthttprouter.New()
+	r.POST("/api/forum/:slug", api.CreateForum)
+	r.POST("/api/forum/:slug/create", api.CreateThread)
+	r.GET("/api/forum/:slug/details", api.GetForum)
+	r.GET("/api/forum/:slug/threads", api.GetThreads)
+	r.GET("/api/forum/:slug/users", api.GetUsers)
+
+	r.POST("/api/thread/:slug_or_id/create", api.CreatePost)
+	r.GET("/api/thread/:slug_or_id/details", api.GetThread)
+	r.POST("/api/thread/:slug_or_id/details", api.UpdateThread)
+	r.GET("/api/thread/:slug_or_id/posts", api.GetPosts)
+	r.POST("/api/thread/:slug_or_id/vote", api.Vote)
+
+	r.POST("/api/user/:nickname/create", api.CreateUser)
+	r.GET("/api/user/:nickname/profile", api.GetUser)
+	r.POST("/api/user/:nickname/profile", api.UpdateUser)
+
+	r.GET("/api/post/:id/details", api.GetPostFull)
+	r.POST("/api/post/:id/details", api.UpdatePost)
+
+	r.GET("/api/service/status", api.GetStatus)
+	r.POST("/api/service/clear", api.Clear)
+
+
+	return r
+}
 
 func main() {
 	db, err := pgx.NewConnPool(pgx.ConnPoolConfig{
@@ -35,32 +64,12 @@ func main() {
 		fmt.Println(err)
 	}
 
-	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	r.HandleFunc("/forum/create", api.CreateForum).Methods("POST")
-
-	r.HandleFunc("/forum/{slug}/create", api.CreateThread).Methods("POST")
-	r.HandleFunc("/forum/{slug}/details", api.GetForum).Methods("GET")
-	r.HandleFunc("/forum/{slug}/threads", api.GetThreads).Methods("GET")
-	r.HandleFunc("/forum/{slug}/users", api.GetUsers).Methods("GET")
-
-	r.HandleFunc("/thread/{slug_or_id}/create", api.CreatePost).Methods("POST")
-	r.HandleFunc("/thread/{slug_or_id}/details", api.GetThread).Methods("GET")
-	r.HandleFunc("/thread/{slug_or_id}/details", api.UpdateThread).Methods("POST")
-	r.HandleFunc("/thread/{slug_or_id}/posts", api.GetPosts).Methods("GET")
-	r.HandleFunc("/thread/{slug_or_id}/vote", api.Vote).Methods("POST")
-
-	r.HandleFunc("/user/{nickname}/create", api.CreateUser).Methods("POST")
-	r.HandleFunc("/user/{nickname}/profile", api.GetUser).Methods("GET")
-	r.HandleFunc("/user/{nickname}/profile", api.UpdateUser).Methods("POST")
-
-	r.HandleFunc("/post/{id}/details", api.GetPostFull).Methods("GET")
-	r.HandleFunc("/post/{id}/details", api.UpdatePost).Methods("POST")
-
-	r.HandleFunc("/service/status", api.GetStatus).Methods("GET")
-	r.HandleFunc("/service/clear", api.Clear).Methods("POST")
+	router := RouterInit(api)
 
 	log.Println("http server started on 5000 port: ")
-	err = http.ListenAndServe(":5000", r)
+	//err = http.ListenAndServe(":5000", r)
+	err = fasthttp.ListenAndServe("localhost:5000", router.Handler)
+	log.Println(err)
 	if err != nil {
 		log.Println(err)
 		return

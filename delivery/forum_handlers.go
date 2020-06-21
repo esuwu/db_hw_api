@@ -1,56 +1,62 @@
 package delivery
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"io/ioutil"
+	"github.com/valyala/fasthttp"
 	models "main/models"
 	"net/http"
 )
 
-func (handlers *Handlers) CreateForum(w http.ResponseWriter, r *http.Request) {
+
+// POST /user/{nickname}/create
+func (handlers *Handlers) CreateForum(ctx *fasthttp.RequestCtx) {
 	var newForum models.Forum
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	err := newForum.UnmarshalJSON(ctx.PostBody())
 
-	fmt.Println(string(body))
-
-	err := json.Unmarshal(body, &newForum)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ctx.Error(err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	forum, e := handlers.usecases.PutForum(&newForum)
+	var body []byte
 	if e != nil {
 		if e.Code == http.StatusConflict {
-			body, _ = json.Marshal(forum)
-			WriteResponse(w, body, e.Code)
+			body, _ = forum.MarshalJSON()
+			ctx.SetStatusCode(e.Code)
+			ctx.SetContentType("application/json")
+			ctx.Write(body)
 			return
 		}
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, e.Code)
+		body, _ = e.MarshalJSON()
+		ctx.SetStatusCode(e.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	body, _ = json.Marshal(forum)
-	WriteResponse(w, body, http.StatusCreated)
+	body, _ = forum.MarshalJSON()
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(http.StatusCreated)
+	ctx.Write(body)
 }
+// GET /forum/{slug}/details
+func (handlers *Handlers) GetForum(ctx *fasthttp.RequestCtx) {
 
-func (handlers *Handlers) GetForum(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	slug := vars["slug"]
-
-	forum, err := handlers.usecases.GetForumBySlug(slug)
+	slug := ctx.UserValue("slug")
+	slugStr := fmt.Sprintf("%v", slug)
+	forum, err := handlers.usecases.GetForumBySlug(slugStr)
 	if err != nil {
-		body, _ := json.Marshal(err)
-		WriteResponse(w, body, err.Code)
+		body, _ := err.MarshalJSON()
+		ctx.SetStatusCode(err.Code)
+		ctx.SetContentType("application/json")
+		ctx.Write(body)
 		return
 	}
 
-	body, _ := json.Marshal(forum)
-
-	WriteResponse(w, body, http.StatusOK)
+	body, _ := forum.MarshalJSON()
+	ctx.SetStatusCode(http.StatusOK)
+	ctx.SetContentType("application/json")
+	ctx.Write(body)
 }
