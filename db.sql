@@ -1,125 +1,99 @@
-ALTER SYSTEM SET checkpoint_completion_target = '0.9';
-ALTER SYSTEM SET wal_buffers = '6912kB';
-ALTER SYSTEM SET default_statistics_target = '100';
-ALTER SYSTEM SET random_page_cost = '1.1';
-ALTER SYSTEM SET effective_io_concurrency = '200';
-ALTER SYSTEM SET seq_page_cost = '0.1';
-ALTER SYSTEM SET random_page_cost = '0.1';
-
-ALTER SYSTEM SET max_worker_processes = '4';
-ALTER SYSTEM SET max_parallel_workers_per_gather = '2';
-ALTER SYSTEM SET max_parallel_workers = '4';
-ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
-
-
 CREATE EXTENSION IF NOT EXISTS CITEXT;
 
-DROP TABLE IF EXISTS users CASCADE;
-CREATE TABLE users
-(
-    ID       BIGSERIAL NOT NULL PRIMARY KEY,
-    nickname CITEXT,
-    about    TEXT,
-    email    CITEXT UNIQUE,
-    fullname TEXT
+DROP TABLE IF EXISTS users, forum, thread, post, vote, forum_users CASCADE;
+
+DROP FUNCTION IF EXISTS thread_insert();
+
+CREATE TABLE users (
+  id       SERIAL,
+
+  nickname CITEXT NOT NULL,
+  email    CITEXT NOT NULL,
+
+  about    TEXT DEFAULT NULL,
+  fullname TEXT   NOT NULL
 );
 
-CREATE INDEX users_covering_index ON users (nickname, email, about, fullname);
+CREATE TABLE forum (
+  id        SERIAL PRIMARY KEY,
+  slug      CITEXT  NOT NULL,
 
-CREATE UNIQUE INDEX users_nickname_index ON users (nickname);
+  title     TEXT    NOT NULL,
+  moderator CITEXT  NOT NULL,
 
-CREATE UNIQUE INDEX users_email_index ON users (email);
-
-CREATE INDEX ON users (nickname, email);
-
-
-
-DROP TABLE IF EXISTS forums CASCADE;
-CREATE TABLE forums
-(
-    ID       BIGSERIAL NOT NULL PRIMARY KEY,
-    slug     CITEXT    NOT NULL UNIQUE,
-    title    TEXT      NOT NULL,
-    authorID BIGINT    NOT NULL,
-    FOREIGN KEY (authorID) REFERENCES users (ID) ON DELETE CASCADE
+  threads   INTEGER NOT NULL DEFAULT 0,
+  posts     BIGINT  NOT NULL DEFAULT 0
 );
 
-CREATE UNIQUE INDEX forum_slug_index ON forums (slug);
+CREATE TABLE thread (
+  id          SERIAL PRIMARY KEY,
 
-CREATE INDEX forum_slug_id_index ON forums (slug, ID);
+  slug        CITEXT  DEFAULT NULL,
+  title       TEXT    NOT NULL,
+  message     TEXT    NOT NULL,
 
-CREATE INDEX on forums (slug, ID, title, authorID);
+  forum_id    INTEGER NOT NULL,
+  forum_slug  CITEXT  NOT NULL,
 
+  user_id     INTEGER,
+  user_nick   CITEXT  NOT NULL,
 
-DROP TABLE IF EXISTS threads CASCADE;
-CREATE TABLE threads
-(
-    ID       BIGSERIAL NOT NULL PRIMARY KEY,
-    created  TIMESTAMP WITH TIME ZONE,
-    forumID  BIGINT    NOT NULL,
-    message  TEXT,
-
-    slug     CITEXT UNIQUE DEFAULT NULL,
-    title    TEXT,
-    vote     INTEGER       DEFAULT 0,
-
-    authorID BIGINT    NOT NULL,
-    FOREIGN KEY (authorID) REFERENCES users (ID) ON DELETE CASCADE,
-    FOREIGN KEY (forumID) REFERENCES forums (ID) ON DELETE CASCADE
+  created     TIMESTAMPTZ,
+  votes_count INTEGER DEFAULT 0
 );
 
-CREATE UNIQUE INDEX thread_slug_index
-  ON threads (slug);
+CREATE FUNCTION thread_insert()
+  RETURNS TRIGGER AS
+$BODY$
+BEGIN
+  UPDATE forum
+  SET
+    threads = forum.threads + 1
+  WHERE slug = NEW.forum_slug;
+  RETURN NULL;
+END;
+$BODY$
+LANGUAGE plpgsql;
 
-CREATE INDEX thread_slug_id_index
-  ON threads (slug, ID);
+CREATE TRIGGER on_thread_insert
+  AFTER INSERT
+  ON thread
+  FOR EACH ROW EXECUTE PROCEDURE thread_insert();
 
-CREATE INDEX thread_forum_id_created_index
-  ON threads (forumID, created);
+CREATE TABLE post (
+  id          SERIAL primary key,
 
-CREATE INDEX thread_forum_id_created_index2
-  ON threads (forumID, created DESC);
+  user_nick   TEXT      NOT NULL,
 
-CREATE UNIQUE INDEX thread_covering_index
-  ON threads (forumID, created, ID, slug, title, message, created, vote);
+  message     TEXT      NOT NULL,
+  created     TIMESTAMPTZ,
 
+  forum_slug  TEXT      NOT NULL,
+  thread_id   INTEGER   NOT NULL,
 
-DROP TABLE IF EXISTS posts CASCADE;
-CREATE TABLE posts
-(
-    ID       BIGSERIAL NOT NULL PRIMARY KEY,
-    created  TIMESTAMP WITH TIME ZONE,
-    forumID  BIGINT    NOT NULL,
-    isEdited BOOLEAN,
-    message  TEXT,
-    parentID BIGINT DEFAULT 0,
-    parents BIGINT[] NOT NULL,
+  parent      INTEGER            DEFAULT 0,
+  parents     INT [] NOT NULL,
+  main_parent INT    NOT NULL,
 
-    authorID BIGINT    NOT NULL,
-    threadID BIGINT    NOT NULL,
-    FOREIGN KEY (authorID) REFERENCES users (ID) ON DELETE CASCADE,
-    FOREIGN KEY (threadID) REFERENCES threads (ID) ON DELETE CASCADE,
-    FOREIGN KEY (forumID) REFERENCES forums (ID) ON DELETE CASCADE
-    --FOREIGN KEY (parentID) REFERENCES posts (ID) ON DELETE CASCADE
+  is_edited   BOOLEAN   NOT NULL DEFAULT FALSE
 );
 
-CREATE INDEX idx_messages_tid_mid ON posts (threadID, ID);
-CREATE INDEX idx_messages_parent_tree_tid_parent ON posts (threadID, ID) WHERE parentID = 0;
-CREATE INDEX idx_messages_all ON posts (ID, created, message, isEdited, parentID, threadID);
 
-CREATE INDEX posts_thread_id_index2 ON posts (threadID);
+CREATE TABLE vote (
+  id         SERIAL,
 
-CREATE INDEX posts_thread_id_parents_index ON posts (threadID, parents);
+  user_id    INTEGER NOT NULL,
+  thread_id  INTEGER NOT NULL REFERENCES thread,
 
+  voice      INTEGER,
+  prev_voice INTEGER DEFAULT 0,
+  CONSTRAINT unique_user_and_thread UNIQUE (user_id, thread_id)
+);
 
-
-DROP TABLE IF EXISTS votes CASCADE;
-CREATE TABLE votes
-(
-    ID       BIGSERIAL NOT NULL PRIMARY KEY,
-    voice    BOOLEAN,
-    threadID BIGINT    NOT NULL,
-    authorID BIGINT    NOT NULL,
-    FOREIGN KEY (authorID) REFERENCES users (ID) ON DELETE CASCADE,
-    FOREIGN KEY (threadID) REFERENCES threads (ID) ON DELETE CASCADE
+CREATE TABLE forum_users (
+  forumId  INTEGER,
+  nickname TEXT,
+  email    TEXT,
+  about    TEXT,
+  fullname TEXT
 );

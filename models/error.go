@@ -1,17 +1,27 @@
 package models
+
+import "errors"
+
 //easyjson:json
 type Error struct {
 	Code    int    `json:"-"`
 	Message string `json:"message"`
 }
+var ErrorMessage []byte
 
-func NewError(code int, msg string) *Error {
-	return &Error{
-		Code:    code,
-		Message: msg,
-	}
+var UserNotFound = errors.New("UserNotFound")
+var UserAlreadyExists = errors.New("UserAlreadyExists")
+var ConflictOnUsers = errors.New("ConflictOnUsers")
+
+var ForumNotFound = errors.New("ForumNotFound")
+var ForumAlreadyExists = errors.New("ForumAlreadyExists")
+
+var ThreadAlreadyExists = errors.New("ThreadAlreadyExists")
+var ThreadNotFound = errors.New("ThreadNotFound")
+
+var PostsConflict = errors.New("ConflictOnPosts")
+
+type ErrorString struct {
+	Message string `json:"message"`
 }
 
-func (err Error) Error() string {
-	return err.Message
-}

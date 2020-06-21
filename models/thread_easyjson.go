@@ -7,7 +7,6 @@ import (
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
-	time "time"
 )
 
 // suppress unused package warning
@@ -18,7 +17,7 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjson2d00218DecodeMainModels(in *jlexer.Lexer, out *Vote) {
+func easyjson2d00218DecodeMainModels(in *jlexer.Lexer, out *ThreadUpdate) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -37,10 +36,26 @@ func easyjson2d00218DecodeMainModels(in *jlexer.Lexer, out *Vote) {
 			continue
 		}
 		switch key {
-		case "nickname":
-			out.Nickname = string(in.String())
-		case "voice":
-			out.Voice = int(in.Int())
+		case "message":
+			if in.IsNull() {
+				in.Skip()
+				out.Message = nil
+			} else {
+				if out.Message == nil {
+					out.Message = new(string)
+				}
+				*out.Message = string(in.String())
+			}
+		case "title":
+			if in.IsNull() {
+				in.Skip()
+				out.Title = nil
+			} else {
+				if out.Title == nil {
+					out.Title = new(string)
+				}
+				*out.Title = string(in.String())
+			}
 		default:
 			in.SkipRecursive()
 		}
@@ -51,47 +66,55 @@ func easyjson2d00218DecodeMainModels(in *jlexer.Lexer, out *Vote) {
 		in.Consumed()
 	}
 }
-func easyjson2d00218EncodeMainModels(out *jwriter.Writer, in Vote) {
+func easyjson2d00218EncodeMainModels(out *jwriter.Writer, in ThreadUpdate) {
 	out.RawByte('{')
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"nickname\":"
+		const prefix string = ",\"message\":"
 		out.RawString(prefix[1:])
-		out.String(string(in.Nickname))
+		if in.Message == nil {
+			out.RawString("null")
+		} else {
+			out.String(string(*in.Message))
+		}
 	}
 	{
-		const prefix string = ",\"voice\":"
+		const prefix string = ",\"title\":"
 		out.RawString(prefix)
-		out.Int(int(in.Voice))
+		if in.Title == nil {
+			out.RawString("null")
+		} else {
+			out.String(string(*in.Title))
+		}
 	}
 	out.RawByte('}')
 }
 
 // MarshalJSON supports json.Marshaler interface
-func (v Vote) MarshalJSON() ([]byte, error) {
+func (v ThreadUpdate) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
 	easyjson2d00218EncodeMainModels(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v Vote) MarshalEasyJSON(w *jwriter.Writer) {
+func (v ThreadUpdate) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson2d00218EncodeMainModels(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
-func (v *Vote) UnmarshalJSON(data []byte) error {
+func (v *ThreadUpdate) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
 	easyjson2d00218DecodeMainModels(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *Vote) UnmarshalEasyJSON(l *jlexer.Lexer) {
+func (v *ThreadUpdate) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson2d00218DecodeMainModels(l, v)
 }
-func easyjson2d00218DecodeMainModels1(in *jlexer.Lexer, out *Threads) {
+func easyjson2d00218DecodeMainModels1(in *jlexer.Lexer, out *ThreadArr) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		in.Skip()
@@ -100,9 +123,9 @@ func easyjson2d00218DecodeMainModels1(in *jlexer.Lexer, out *Threads) {
 		in.Delim('[')
 		if *out == nil {
 			if !in.IsDelim(']') {
-				*out = make(Threads, 0, 8)
+				*out = make(ThreadArr, 0, 8)
 			} else {
-				*out = Threads{}
+				*out = ThreadArr{}
 			}
 		} else {
 			*out = (*out)[:0]
@@ -127,7 +150,7 @@ func easyjson2d00218DecodeMainModels1(in *jlexer.Lexer, out *Threads) {
 		in.Consumed()
 	}
 }
-func easyjson2d00218EncodeMainModels1(out *jwriter.Writer, in Threads) {
+func easyjson2d00218EncodeMainModels1(out *jwriter.Writer, in ThreadArr) {
 	if in == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 		out.RawString("null")
 	} else {
@@ -147,29 +170,29 @@ func easyjson2d00218EncodeMainModels1(out *jwriter.Writer, in Threads) {
 }
 
 // MarshalJSON supports json.Marshaler interface
-func (v Threads) MarshalJSON() ([]byte, error) {
+func (v ThreadArr) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
 	easyjson2d00218EncodeMainModels1(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v Threads) MarshalEasyJSON(w *jwriter.Writer) {
+func (v ThreadArr) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson2d00218EncodeMainModels1(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
-func (v *Threads) UnmarshalJSON(data []byte) error {
+func (v *ThreadArr) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
 	easyjson2d00218DecodeMainModels1(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *Threads) UnmarshalEasyJSON(l *jlexer.Lexer) {
+func (v *ThreadArr) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson2d00218DecodeMainModels1(l, v)
 }
-func easyjson2d00218DecodeMainModels2(in *jlexer.Lexer, out *ThreadParams) {
+func easyjson2d00218DecodeMainModels2(in *jlexer.Lexer, out *Thread) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -188,114 +211,48 @@ func easyjson2d00218DecodeMainModels2(in *jlexer.Lexer, out *ThreadParams) {
 			continue
 		}
 		switch key {
-		case "Limit":
-			out.Limit = int(in.Int())
-		case "Since":
-			if data := in.Raw(); in.Ok() {
-				in.AddError((out.Since).UnmarshalJSON(data))
-			}
-		case "Desc":
-			out.Desc = bool(in.Bool())
-		default:
-			in.SkipRecursive()
-		}
-		in.WantComma()
-	}
-	in.Delim('}')
-	if isTopLevel {
-		in.Consumed()
-	}
-}
-func easyjson2d00218EncodeMainModels2(out *jwriter.Writer, in ThreadParams) {
-	out.RawByte('{')
-	first := true
-	_ = first
-	{
-		const prefix string = ",\"Limit\":"
-		out.RawString(prefix[1:])
-		out.Int(int(in.Limit))
-	}
-	{
-		const prefix string = ",\"Since\":"
-		out.RawString(prefix)
-		out.Raw((in.Since).MarshalJSON())
-	}
-	{
-		const prefix string = ",\"Desc\":"
-		out.RawString(prefix)
-		out.Bool(bool(in.Desc))
-	}
-	out.RawByte('}')
-}
-
-// MarshalJSON supports json.Marshaler interface
-func (v ThreadParams) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson2d00218EncodeMainModels2(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
-// MarshalEasyJSON supports easyjson.Marshaler interface
-func (v ThreadParams) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson2d00218EncodeMainModels2(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *ThreadParams) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson2d00218DecodeMainModels2(&r, v)
-	return r.Error()
-}
-
-// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *ThreadParams) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson2d00218DecodeMainModels2(l, v)
-}
-func easyjson2d00218DecodeMainModels3(in *jlexer.Lexer, out *Thread) {
-	isTopLevel := in.IsStart()
-	if in.IsNull() {
-		if isTopLevel {
-			in.Consumed()
-		}
-		in.Skip()
-		return
-	}
-	in.Delim('{')
-	for !in.IsDelim('}') {
-		key := in.UnsafeString()
-		in.WantColon()
-		if in.IsNull() {
-			in.Skip()
-			in.WantComma()
-			continue
-		}
-		switch key {
-		case "author":
-			out.Author = string(in.String())
-		case "created":
+		case "id":
 			if in.IsNull() {
 				in.Skip()
-				out.Created = nil
+				out.Id = nil
 			} else {
-				if out.Created == nil {
-					out.Created = new(time.Time)
+				if out.Id == nil {
+					out.Id = new(int)
 				}
-				if data := in.Raw(); in.Ok() {
-					in.AddError((*out.Created).UnmarshalJSON(data))
-				}
+				*out.Id = int(in.Int())
 			}
-		case "forum":
-			out.Forum = string(in.String())
-		case "id":
-			out.ID = int64(in.Int64())
-		case "message":
-			out.Message = string(in.String())
 		case "slug":
-			out.Slug = string(in.String())
+			if in.IsNull() {
+				in.Skip()
+				out.Slug = nil
+			} else {
+				if out.Slug == nil {
+					out.Slug = new(string)
+				}
+				*out.Slug = string(in.String())
+			}
 		case "title":
 			out.Title = string(in.String())
+		case "message":
+			out.Message = string(in.String())
+		case "forum":
+			out.Forum_slug = string(in.String())
+		case "author":
+			out.User_nick = string(in.String())
+		case "created":
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Created).UnmarshalJSON(data))
+			}
 		case "votes":
-			out.Votes = int32(in.Int32())
+			if in.IsNull() {
+				in.Skip()
+				out.Votes_count = nil
+			} else {
+				if out.Votes_count == nil {
+					out.Votes_count = new(int)
+				}
+				*out.Votes_count = int(in.Int())
+			}
 		default:
 			in.SkipRecursive()
 		}
@@ -306,43 +263,27 @@ func easyjson2d00218DecodeMainModels3(in *jlexer.Lexer, out *Thread) {
 		in.Consumed()
 	}
 }
-func easyjson2d00218EncodeMainModels3(out *jwriter.Writer, in Thread) {
+func easyjson2d00218EncodeMainModels2(out *jwriter.Writer, in Thread) {
 	out.RawByte('{')
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"author\":"
+		const prefix string = ",\"id\":"
 		out.RawString(prefix[1:])
-		out.String(string(in.Author))
-	}
-	{
-		const prefix string = ",\"created\":"
-		out.RawString(prefix)
-		if in.Created == nil {
+		if in.Id == nil {
 			out.RawString("null")
 		} else {
-			out.Raw((*in.Created).MarshalJSON())
+			out.Int(int(*in.Id))
 		}
-	}
-	{
-		const prefix string = ",\"forum\":"
-		out.RawString(prefix)
-		out.String(string(in.Forum))
-	}
-	{
-		const prefix string = ",\"id\":"
-		out.RawString(prefix)
-		out.Int64(int64(in.ID))
-	}
-	{
-		const prefix string = ",\"message\":"
-		out.RawString(prefix)
-		out.String(string(in.Message))
 	}
 	{
 		const prefix string = ",\"slug\":"
 		out.RawString(prefix)
-		out.String(string(in.Slug))
+		if in.Slug == nil {
+			out.RawString("null")
+		} else {
+			out.String(string(*in.Slug))
+		}
 	}
 	{
 		const prefix string = ",\"title\":"
@@ -350,9 +291,33 @@ func easyjson2d00218EncodeMainModels3(out *jwriter.Writer, in Thread) {
 		out.String(string(in.Title))
 	}
 	{
+		const prefix string = ",\"message\":"
+		out.RawString(prefix)
+		out.String(string(in.Message))
+	}
+	{
+		const prefix string = ",\"forum\":"
+		out.RawString(prefix)
+		out.String(string(in.Forum_slug))
+	}
+	{
+		const prefix string = ",\"author\":"
+		out.RawString(prefix)
+		out.String(string(in.User_nick))
+	}
+	{
+		const prefix string = ",\"created\":"
+		out.RawString(prefix)
+		out.Raw((in.Created).MarshalJSON())
+	}
+	{
 		const prefix string = ",\"votes\":"
 		out.RawString(prefix)
-		out.Int32(int32(in.Votes))
+		if in.Votes_count == nil {
+			out.RawString("null")
+		} else {
+			out.Int(int(*in.Votes_count))
+		}
 	}
 	out.RawByte('}')
 }
@@ -360,23 +325,23 @@ func easyjson2d00218EncodeMainModels3(out *jwriter.Writer, in Thread) {
 // MarshalJSON supports json.Marshaler interface
 func (v Thread) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson2d00218EncodeMainModels3(&w, v)
+	easyjson2d00218EncodeMainModels2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Thread) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson2d00218EncodeMainModels3(w, v)
+	easyjson2d00218EncodeMainModels2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Thread) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson2d00218DecodeMainModels3(&r, v)
+	easyjson2d00218DecodeMainModels2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Thread) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson2d00218DecodeMainModels3(l, v)
+	easyjson2d00218DecodeMainModels2(l, v)
 }

@@ -6,37 +6,20 @@ import (
 )
 
 type UseCase interface {
-	PutUser(user *models.User) (models.Users, *models.Error)
-	GetUserByNickname(nickname string) (models.User, *models.Error)
-	ChangeUser(userUpd *models.UpdateUserFields, nickname string) (models.User, *models.Error)
-	GetUsersByForum(slug string, params models.UserParams) (models.Users, *models.Error)
-
-	PutForum(forum *models.Forum) (models.Forum, *models.Error)
-	GetForumBySlug(slug string) (models.Forum, *models.Error)
-	GetForumByID(id int64) (models.Forum, *models.Error)
-
-	PutThread(thread *models.Thread) (models.Thread, *models.Error)
-	GetThreadBySlug(slug string) (models.Thread, *models.Error)
-	GetThreadByID(id int64) (models.Thread, *models.Error)
-	GetUserByID(id int64) (models.User, *models.Error)
-	GetThreadsByForum(slug string, params models.ThreadParams) (models.Threads, *models.Error)
-	UpdateThreadWithID(thread *models.Thread) (models.Thread, *models.Error)
-	UpdateThreadWithSlug(thread *models.Thread) (models.Thread, *models.Error)
-
-	PutPost(post *models.Post) (*models.Post, *models.Error)
-	PutPostWithSlug(post *models.Post, threadSlug string) (*models.Post, *models.Error)
-	GetPostFull(id int64, fields []string) (models.PostFull, *models.Error)
-	GetPostByID(id int64) (models.Post, *models.Error)
-	ChangePost(post *models.Post) (models.Post, *models.Error)
-
-	PutVote(vote *models.Vote) (models.Thread, *models.Error)
-	PutVoteWithSlug(vote *models.Vote, slug string) (models.Thread, *models.Error)
-
-	GetPostsByThreadID(id int64, params models.PostParams) (models.Posts, *models.Error)
-	GetPostsByThreadSlug(slug string, params models.PostParams) (models.Posts, *models.Error)
-
-	GetStatus() (models.Status, error)
-	RemoveAllData() error
+	CreateForum(newForum *models.Forum) (*models.Forum, error)
+	CreateThread(slug interface{}, threadDetails *models.Thread) (*models.Thread, error)
+	GetForumDetails(slug interface{}) (*models.Forum, error)
+	GetForumThreads(slug interface{}, limit []byte, since []byte, desc []byte) (*models.ThreadArr, error)
+	GetForumUsers(slug interface{}, limit []byte, since []byte, desc []byte) (*models.UsersArr, error)
+	GetPostDetails(id *string, related []byte) (*models.PostDetails, int)
+	UpdatePostDetails(id *string, postUpd *models.PostUpdate) (*models.Post, int)
+	GetStatus() *models.Status
+	Clear()
+	CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error)
+	GetThread(slugOrID interface{}) (*models.Thread, error)
+	UpdateThreadDetails(slugOrID *string, thread *models.ThreadUpdate) (*models.Thread, int)
+	GetThreadPosts(slugOrID interface{}, limit []byte, since []byte, sort []byte, desc []byte) (*models.PostArr, int)
+	PutVote(slugOrID interface{}, vote *models.Vote) (*models.Thread, error)
 }
 
 type useCase struct {

@@ -1,156 +1,122 @@
 package delivery
 
 import (
-	"fmt"
 	"github.com/valyala/fasthttp"
+	"log"
 	models "main/models"
 	"net/http"
-	"strconv"
-	"time"
 )
 
 
 
 func (handlers *Handlers) CreateThread(ctx *fasthttp.RequestCtx) {
-	var newThread models.Thread
+	threadDetails := models.Thread{}
+	threadDetails.UnmarshalJSON(ctx.PostBody())
 
-	err := newThread.UnmarshalJSON(ctx.PostBody())
+	slug := ctx.UserValue("slug")
 
+	threadExisting, err := handlers.usecases.CreateThread(&slug, &threadDetails)
+
+	var response []byte
+
+	switch err {
+	case nil:
+		ctx.SetStatusCode(http.StatusCreated)
+		response, _ = threadExisting.MarshalJSON()
+
+	case models.UserNotFound, models.ForumNotFound:
+		ctx.SetStatusCode(http.StatusNotFound)
+		response = models.ErrorMessage
+
+	case models.ThreadAlreadyExists:
+		ctx.SetStatusCode(http.StatusConflict)
+		response, _ = threadExisting.MarshalJSON()
+	}
+
+	ctx.SetContentType("application/json")
+	ctx.Write(response)
+}
+
+func (handlers *Handlers) GetThreadDetails(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
+	slugOrID := ctx.UserValue("slug_or_id")
+
+	threadDetails, err := handlers.usecases.GetThread(slugOrID)
 	if err != nil {
-		ctx.Error(err.Error(), http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusNotFound)
+		ctx.Write(models.ErrorMessage)
 		return
 	}
 
-	slugOrId := ctx.UserValue("slug")
-	slug := fmt.Sprintf("%v", slugOrId)
+	var resp []byte
+	resp, err = threadDetails.MarshalJSON()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	fmt.Println("TIME: ", newThread.Created)
+	ctx.Write(resp)
+}
 
-	newThread.Forum = slug
+func (handlers *Handlers) UpdateThreadDetails(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
+	slugOrID := ctx.UserValue("slug_or_id").(string)
 
-	thread, e := handlers.usecases.PutThread(&newThread)
-	if e != nil {
-		if e.Code == http.StatusConflict {
-			body, _ := thread.MarshalJSON()
-			ctx.SetStatusCode(e.Code)
-			ctx.SetContentType("application/json")
-			ctx.Write(body)
-			return
+	threadUpd := models.ThreadUpdate{}
+	threadUpd.UnmarshalJSON(ctx.PostBody())
+
+	thread, statusCode := handlers.usecases.UpdateThreadDetails(&slugOrID, &threadUpd)
+	ctx.SetStatusCode(statusCode)
+
+	switch statusCode {
+	case http.StatusOK:
+		resp, _ := thread.MarshalJSON()
+		ctx.Write(resp)
+	case http.StatusNotFound:
+		ctx.Write(models.ErrorMessage)
+	}
+}
+
+func (handlers *Handlers) GetThreadPosts(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
+
+	slugOrID := ctx.UserValue("slug_or_id").(string)
+	limit := ctx.QueryArgs().Peek("limit")
+	since := ctx.QueryArgs().Peek("since")
+	sort := ctx.QueryArgs().Peek("sort")
+	desc := ctx.QueryArgs().Peek("desc")
+
+	postArr, statusCode := handlers.usecases.GetThreadPosts(&slugOrID, limit, since, sort, desc)
+
+	ctx.SetStatusCode(statusCode)
+
+	switch statusCode {
+	case http.StatusOK:
+		if len(*postArr) != 0 {
+			response, _ := postArr.MarshalJSON()
+			ctx.Write(response)
+		} else {
+			ctx.Write([]byte("[]"))
 		}
-		body, _ := e.MarshalJSON()
-		ctx.SetStatusCode(e.Code)
-		ctx.SetContentType("application/json")
-		ctx.Write(body)
-		return
+	case http.StatusNotFound:
+		ctx.Write(models.ErrorMessage)
 	}
-
-	body, _ := thread.MarshalJSON()
-	ctx.SetContentType("application/json")
-	ctx.SetStatusCode(http.StatusCreated)
-	ctx.Write(body)
 }
 
-func (handlers *Handlers) GetThreads(ctx *fasthttp.RequestCtx) {
-
-	slugInterface := ctx.UserValue("slug")
-	slug := fmt.Sprintf("%v", slugInterface)
-
-	getLimit := ctx.QueryArgs().Peek("limit")
-	getSince := ctx.QueryArgs().Peek("since")
-	getDesc := ctx.QueryArgs().Peek("desc")
-
-	var params models.ThreadParams
-	var err error
-
-	params.Limit, err = strconv.Atoi(string(getLimit))
-	if err != nil {
-		params.Limit = -1
-	}
-
-	params.Since, err = time.Parse(time.RFC3339Nano, string(getSince))
-	if err != nil {
-		params.Since = time.Time{}
-	}
-	params.Desc = string(getDesc) == "true"
-
-	threads, e := handlers.usecases.GetThreadsByForum(slug, params)
-	if e != nil {
-
-		body, _ := e.MarshalJSON()
-		ctx.SetStatusCode(e.Code)
-		ctx.SetContentType("application/json")
-		ctx.Write(body)
-		return
-	}
-
-	body, _ := threads.MarshalJSON()
+func (handlers *Handlers)  VoteThread(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("application/json")
-	ctx.SetStatusCode(http.StatusOK)
-	ctx.Write(body)
-}
+	var vote models.Vote
+	vote.UnmarshalJSON(ctx.PostBody())
 
-func (handlers *Handlers) GetThread(ctx *fasthttp.RequestCtx) {
-	var thread models.Thread
-	var e *models.Error
+	slugOrID := ctx.UserValue("slug_or_id")
 
-	slugInterface := ctx.UserValue("slug_or_id")
-	slug_or_id := fmt.Sprintf("%v", slugInterface)
-
-	if id, err := strconv.Atoi(slug_or_id); err == nil {
-		thread, e = handlers.usecases.GetThreadByID(int64(id))
-	} else {
-		thread, e = handlers.usecases.GetThreadBySlug(slug_or_id)
-	}
-	if e != nil {
-		body, _ := e.MarshalJSON()
-		ctx.SetStatusCode(e.Code)
-		ctx.SetContentType("application/json")
-		ctx.Write(body)
-		return
-	}
-
-	fmt.Println(thread)
-
-	body, _ := thread.MarshalJSON()
-	ctx.SetContentType("application/json")
-	ctx.SetStatusCode(http.StatusOK)
-	ctx.Write(body)
-}
-
-func (handlers *Handlers) UpdateThread(ctx *fasthttp.RequestCtx) {
-	var thread models.Thread
-	var e *models.Error
-
-	err := thread.UnmarshalJSON(ctx.PostBody())
-
+	thread, err := handlers.usecases.PutVote(slugOrID, &vote)
 	if err != nil {
-		ctx.Error(err.Error(), http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusNotFound)
+		ctx.Write(models.ErrorMessage)
 		return
 	}
 
-	slugInterface := ctx.UserValue("slug_or_id")
-	slug_or_id := fmt.Sprintf("%v", slugInterface)
-
-
-
-	if id, err := strconv.Atoi(slug_or_id); err == nil {
-		thread.ID = int64(id)
-		thread, e = handlers.usecases.UpdateThreadWithID(&thread)
-	} else {
-		thread.Slug = slug_or_id
-		thread, e = handlers.usecases.UpdateThreadWithSlug(&thread)
-	}
-	if e != nil {
-		body, _ := e.MarshalJSON()
-		ctx.SetStatusCode(e.Code)
-		ctx.SetContentType("application/json")
-		ctx.Write(body)
-		return
-	}
-
-
-	body, _ := thread.MarshalJSON()
-	ctx.SetContentType("application/json")
 	ctx.SetStatusCode(http.StatusOK)
-	ctx.Write(body)
+	response, _ := thread.MarshalJSON()
+	ctx.Write(response)
 }

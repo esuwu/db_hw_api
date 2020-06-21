@@ -5,6 +5,7 @@ import (
 	"fmt"
 	delivery "main/delivery"
 	models "main/models"
+	prepStat "main/prepareStat"
 	repository "main/repository"
 	useCase "main/usecase"
 	"github.com/jackc/pgx"
@@ -14,7 +15,17 @@ import (
 	"github.com/buaazp/fasthttprouter"
 )
 
-func RouterInit(api *delivery.Handlers) *fasthttprouter.Router {
+func InitPrepStatement(db *pgx.ConnPool){
+
+	prepStat.PrepareForum(db)
+	prepStat.PrepareForumUsers(db)
+	prepStat.PreparePost(db)
+	prepStat.PrepateThread(db)
+	prepStat.PrepareUsers(db)
+	prepStat.PrepareVotes(db)
+}
+
+func RouteInit(api *delivery.Handlers) *fasthttprouter.Router {
 
 	r := fasthttprouter.New()
 	r.POST("/api/forum/:slug", api.CreateForum)
@@ -54,7 +65,7 @@ func main() {
 		},
 		MaxConnections: 50,
 	})
-
+	InitPrepStatement(db)
 	usecases := useCase.NewUseCase(repository.NewDBStore(db))
 	api := delivery.NewHandlers(usecases)
 
@@ -64,7 +75,7 @@ func main() {
 		fmt.Println(err)
 	}
 
-	router := RouterInit(api)
+	router := RouteInit(api)
 
 	log.Println("http server started on 5000 port: ")
 	//err = http.ListenAndServe(":5000", r)
