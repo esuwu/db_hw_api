@@ -1,3 +1,17 @@
+ALTER SYSTEM SET checkpoint_completion_target = '0.9';
+ALTER SYSTEM SET wal_buffers = '6912kB';
+ALTER SYSTEM SET default_statistics_target = '100';
+ALTER SYSTEM SET random_page_cost = '1.1';
+ALTER SYSTEM SET effective_io_concurrency = '200';
+ALTER SYSTEM SET seq_page_cost = '0.1';
+ALTER SYSTEM SET random_page_cost = '0.1';
+
+ALTER SYSTEM SET max_worker_processes = '4';
+ALTER SYSTEM SET max_parallel_workers_per_gather = '2';
+ALTER SYSTEM SET max_parallel_workers = '4';
+ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
+
+
 CREATE EXTENSION IF NOT EXISTS CITEXT;
 
 DROP TABLE IF EXISTS users CASCADE;

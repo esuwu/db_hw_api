@@ -7,7 +7,21 @@ type Status struct {
 	User   int64 `json:"user"`
 }
 
-const InitScript = `CREATE EXTENSION IF NOT EXISTS CITEXT;
+const InitScript = `ALTER SYSTEM SET checkpoint_completion_target = '0.9';
+ALTER SYSTEM SET wal_buffers = '6912kB';
+ALTER SYSTEM SET default_statistics_target = '100';
+ALTER SYSTEM SET random_page_cost = '1.1';
+ALTER SYSTEM SET effective_io_concurrency = '200';
+ALTER SYSTEM SET seq_page_cost = '0.1';
+ALTER SYSTEM SET random_page_cost = '0.1';
+
+ALTER SYSTEM SET max_worker_processes = '4';
+ALTER SYSTEM SET max_parallel_workers_per_gather = '2';
+ALTER SYSTEM SET max_parallel_workers = '4';
+ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
+
+
+CREATE EXTENSION IF NOT EXISTS CITEXT;
 
 DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users
@@ -28,6 +42,7 @@ CREATE UNIQUE INDEX users_email_index ON users (email);
 CREATE INDEX ON users (nickname, email);
 
 
+
 DROP TABLE IF EXISTS forums CASCADE;
 CREATE TABLE forums
 (
@@ -43,6 +58,7 @@ CREATE UNIQUE INDEX forum_slug_index ON forums (slug);
 CREATE INDEX forum_slug_id_index ON forums (slug, ID);
 
 CREATE INDEX on forums (slug, ID, title, authorID);
+
 
 DROP TABLE IF EXISTS threads CASCADE;
 CREATE TABLE threads
@@ -103,6 +119,7 @@ CREATE INDEX idx_messages_all ON posts (ID, created, message, isEdited, parentID
 CREATE INDEX posts_thread_id_index2 ON posts (threadID);
 
 CREATE INDEX posts_thread_id_parents_index ON posts (threadID, parents);
+
 
 
 DROP TABLE IF EXISTS votes CASCADE;
