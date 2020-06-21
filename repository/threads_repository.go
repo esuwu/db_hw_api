@@ -113,8 +113,17 @@ func (store *DBStore) GetThreadByID(id int64) (models.Thread, *models.Error) {
 
 	selectStr := "SELECT ID, created, forumid, message, slug, title, authorid, vote FROM threads WHERE id = $1"
 	row := store.DB.QueryRow(selectStr, id)
+	var slug *string
+	var title *string
+	err := row.Scan(&thread.ID, &thread.Created, &thread.ForumID, &thread.Message, &slug, &title, &thread.AuthorID, &thread.Votes)
 
-	err := row.Scan(&thread.ID, &thread.Created, &thread.ForumID, &thread.Message, &thread.Slug, &thread.Title, &thread.AuthorID, &thread.Votes)
+	if slug != nil {
+		thread.Slug = *slug
+	}
+
+	if title != nil {
+		thread.Title = *title
+	}
 
 	if err != nil {
 		fmt.Println(err)
