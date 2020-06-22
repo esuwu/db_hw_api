@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"encoding/json"
 	"github.com/valyala/fasthttp"
 	"log"
 	models "main/models"
@@ -26,7 +27,7 @@ func (handlers *Handlers) CreateThread(ctx *fasthttp.RequestCtx) {
 
 	case models.UserNotFound, models.ForumNotFound:
 		ctx.SetStatusCode(http.StatusNotFound)
-		response = models.ErrorMessage
+		response, _ = json.Marshal(err)
 
 	case models.ThreadAlreadyExists:
 		ctx.SetStatusCode(http.StatusConflict)
@@ -37,14 +38,16 @@ func (handlers *Handlers) CreateThread(ctx *fasthttp.RequestCtx) {
 	ctx.Write(response)
 }
 
-func (handlers *Handlers) GetThreadDetails(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers) GetThread(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("application/json")
 	slugOrID := ctx.UserValue("slug_or_id")
 
 	threadDetails, err := handlers.usecases.GetThread(slugOrID)
 	if err != nil {
 		ctx.SetStatusCode(http.StatusNotFound)
-		ctx.Write(models.ErrorMessage)
+		response, _ := json.Marshal(err)
+		ctx.SetContentType("application/json")
+		ctx.Write(response)
 		return
 	}
 
@@ -57,7 +60,7 @@ func (handlers *Handlers) GetThreadDetails(ctx *fasthttp.RequestCtx) {
 	ctx.Write(resp)
 }
 
-func (handlers *Handlers) UpdateThreadDetails(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers) UpdateThread(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("application/json")
 	slugOrID := ctx.UserValue("slug_or_id").(string)
 
@@ -76,7 +79,7 @@ func (handlers *Handlers) UpdateThreadDetails(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (handlers *Handlers) GetThreadPosts(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers) GetPosts(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("application/json")
 
 	slugOrID := ctx.UserValue("slug_or_id").(string)
@@ -102,7 +105,7 @@ func (handlers *Handlers) GetThreadPosts(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (handlers *Handlers)  VoteThread(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers)  Vote(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("application/json")
 	var vote models.Vote
 	vote.UnmarshalJSON(ctx.PostBody())
@@ -112,7 +115,9 @@ func (handlers *Handlers)  VoteThread(ctx *fasthttp.RequestCtx) {
 	thread, err := handlers.usecases.PutVote(slugOrID, &vote)
 	if err != nil {
 		ctx.SetStatusCode(http.StatusNotFound)
-		ctx.Write(models.ErrorMessage)
+		response, _ := json.Marshal(err)
+		ctx.SetContentType("application/json")
+		ctx.Write(response)
 		return
 	}
 

@@ -65,20 +65,20 @@ func main() {
 		},
 		MaxConnections: 50,
 	})
-	InitPrepStatement(db)
+
 	usecases := useCase.NewUseCase(repository.NewDBStore(db))
 	api := delivery.NewHandlers(usecases)
 
 	_, err = db.Exec(models.InitScript)
-
+	InitPrepStatement(db)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	router := RouteInit(api)
 
+
 	log.Println("http server started on 5000 port: ")
-	//err = http.ListenAndServe(":5000", r)
 	err = fasthttp.ListenAndServe("localhost:5000", router.Handler)
 	log.Println(err)
 	if err != nil {

@@ -186,6 +186,29 @@ JOIN (
 ON p.main_parent=s.id
 ORDER BY p.parents DESC`
 
+/*
+post.ParentTreeSort: `
+			WITH roots AS (
+				SELECT DISTINCT path[1]
+				FROM posts
+				WHERE thread_id = $1
+				ORDER BY path[1] DESC
+				LIMIT $2
+			)
+			SELECT id,
+				   thread_id,
+				   author_nickname,
+				   forum_slug,
+				   is_edited,
+				   message,
+				   parent,
+				   created
+			FROM posts
+			WHERE thread_id = $1
+			  AND path[1] IN (SELECT * FROM roots)
+			ORDER BY path[1] DESC, path[2:]`,
+*/
+
 const getPostsParentTreeLimitDesc = `SELECT p.id,
 	p.user_nick::TEXT,
 	p.message,
@@ -282,6 +305,8 @@ func PreparePost(tx *pgx.ConnPool) {
 	if _, err := tx.Prepare("getPostsParentTreeSinceLimitDesc", getPostsParentTreeSinceLimitDesc); err != nil {
 		log.Fatalln(err)
 	}
+
+
 
 	if _, err := tx.Prepare("getPostsParentTreeLimitDesc", getPostsParentTreeLimitDesc); err != nil {
 		log.Fatalln(err)

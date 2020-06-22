@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/buaazp/fasthttprouter v0.1.1 // indirect
+	github.com/emirpasic/gods v1.12.0
 	github.com/gorilla/mux v1.7.3
 	github.com/jackc/pgx v3.6.0+incompatible
 	github.com/lib/pq v1.2.0

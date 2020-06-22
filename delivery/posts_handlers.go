@@ -1,11 +1,12 @@
 package delivery
 
 import (
+	"encoding/json"
 	"github.com/valyala/fasthttp"
 	models "main/models"
 	"net/http"
 )
-func (handlers *Handlers) CreateNewPosts(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers) CreatePost(ctx *fasthttp.RequestCtx) {
 	slugOrID := ctx.UserValue("slug_or_id")
 
 	postsArr := models.PostArr{}
@@ -13,31 +14,31 @@ func (handlers *Handlers) CreateNewPosts(ctx *fasthttp.RequestCtx) {
 
 	newPosts, err := handlers.usecases.CreatePosts(slugOrID, &postsArr)
 
-	var resp []byte
+	var response []byte
 
 	switch err {
 	case nil:
 		ctx.SetStatusCode(http.StatusCreated)
 		if newPosts != nil {
-			resp, _ = newPosts.MarshalJSON()
+			response, _ = newPosts.MarshalJSON()
 		} else {
-			resp = []byte("[]")
+			response = []byte("[]")
 		}
 
 	case models.ThreadNotFound, models.UserNotFound:
 		ctx.SetStatusCode(http.StatusNotFound)
-		resp = models.ErrorMessage
+		response, _ = json.Marshal(err)
 
 	case models.PostsConflict:
 		ctx.SetStatusCode(http.StatusConflict)
-		resp = models.ErrorMessage
+		response, _ = json.Marshal(err)
 	}
 
 	ctx.SetContentType("application/json")
-	ctx.Write(resp)
+	ctx.Write(response)
 }
 
-func  (handlers *Handlers)  GetPostDetails(ctx *fasthttp.RequestCtx) {
+func  (handlers *Handlers)  GetPostFull(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("application/json")
 	id := ctx.UserValue("id").(string)
 	related := ctx.QueryArgs().Peek("related")
@@ -50,11 +51,12 @@ func  (handlers *Handlers)  GetPostDetails(ctx *fasthttp.RequestCtx) {
 		resp, _ := postDetails.MarshalJSON()
 		ctx.Write(resp)
 	case http.StatusNotFound:
+
 		ctx.Write(models.ErrorMessage)
 	}
 }
 
-func (handlers *Handlers) ChangePostDetails(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers) UpdatePost(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("application/json")
 	id := ctx.UserValue("id").(string)
 	postUpd := models.PostUpdate{}

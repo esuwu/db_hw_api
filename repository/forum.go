@@ -5,8 +5,7 @@ import (
 	"log"
 
 	"github.com/jackc/pgx"
-	"github.com/nd-r/tech-db-forum/dberrors"
-	"github.com/nd-r/tech-db-forum/models"
+	"main/models"
 )
 
 const createForumQuery = `INSERT INTO forum
@@ -17,10 +16,9 @@ VALUES (
 	(SELECT nickname FROM users WHERE nickname=$3))
 RETURNING moderator::TEXT`
 
-func CreateForum(forum *models.Forum) (*models.Forum, error) {
-	tx, err := db.Begin()
+func (store *DBStore) CreateForum(forum *models.Forum) (*models.Forum, error) {
+	tx, err := store.DB.Begin()
 	if err != nil {
-		log.Fatalln(err)
 	}
 
 	forumExisting := models.Forum{}
@@ -30,23 +28,23 @@ func CreateForum(forum *models.Forum) (*models.Forum, error) {
 		&forumExisting.Posts, &forumExisting.Threads, &forumExisting.Moderator); err == nil {
 
 		tx.Rollback()
-		return &forumExisting, dberrors.ErrForumExists
+		return &forumExisting, models.ForumAlreadyExists
 	}
 
 	if err := tx.QueryRow(createForumQuery, &forum.Slug, &forum.Title, &forum.Moderator).
 		Scan(&forum.Moderator); err != nil {
 		tx.Rollback()
-		return nil, dberrors.ErrUserNotFound
+		return nil, models.UserNotFound
 	}
 
 	tx.Commit()
 	return forum, nil
 }
 
-func GetForumDetails(slug interface{}) (*models.Forum, error) {
+func (store *DBStore) GetForumDetails(slug interface{}) (*models.Forum, error) {
 	forum := models.Forum{}
 
-	err := db.QueryRow("selectForumQuery", &slug).
+	err := store.DB.QueryRow("selectForumQuery", &slug).
 		Scan(&forum.Slug, &forum.Title, &forum.Posts, &forum.Threads, &forum.Moderator)
 
 	if err != nil {
@@ -83,8 +81,8 @@ const claimUserInfo = `SELECT
 FROM users
 WHERE nickname = $1`
 
-func CreateThread(forumSlug interface{}, threadDetails *models.Thread) (*models.Thread, error) {
-	tx, err := db.Begin()
+func (store *DBStore) CreateThread(forumSlug interface{}, threadDetails *models.Thread) (*models.Thread, error) {
+	tx, err := store.DB.Begin()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -99,7 +97,7 @@ func CreateThread(forumSlug interface{}, threadDetails *models.Thread) (*models.
 		log.Println(err, *forumSlug.(*interface{}))
 		tx.Rollback()
 
-		return nil, dberrors.ErrUserNotFound
+		return nil, models.UserNotFound
 	}
 
 	if err = tx.QueryRow(getForumIDAndSlugBySlug, &forumSlug).
@@ -107,7 +105,7 @@ func CreateThread(forumSlug interface{}, threadDetails *models.Thread) (*models.
 		log.Println(err)
 		tx.Rollback()
 
-		return nil, dberrors.ErrForumNotFound
+		return nil, models.ForumNotFound
 	}
 
 	if err = tx.QueryRow(insertIntoThread, threadDetails.Slug, &threadDetails.Title,
@@ -122,7 +120,7 @@ func CreateThread(forumSlug interface{}, threadDetails *models.Thread) (*models.
 			&existingThread.Votes_count); err == nil {
 
 			tx.Rollback()
-			return &existingThread, dberrors.ErrThreadExists
+			return &existingThread, models.ThreadAlreadyExists
 		}
 
 		tx.Rollback()
@@ -141,21 +139,21 @@ func CreateThread(forumSlug interface{}, threadDetails *models.Thread) (*models.
 	return threadDetails, nil
 }
 
-func GetForumThreads(slug interface{}, limit []byte, since []byte, desc []byte) (*models.TreadArr, error) {
+func (store *DBStore) GetForumThreads(slug interface{}, limit []byte, since []byte, desc []byte) (*models.ThreadArr, error) {
 	var err error
 	var rows *pgx.Rows
 
 	if since == nil {
 		if bytes.Equal([]byte("true"), desc) {
-			rows, err = db.Query("gftLimitDesc", slug, limit)
+			rows, err = store.DB.Query("gftLimitDesc", slug, limit)
 		} else {
-			rows, err = db.Query("gftLimit", slug, limit)
+			rows, err = store.DB.Query("gftLimit", slug, limit)
 		}
 	} else {
 		if bytes.Equal([]byte("true"), desc) {
-			rows, err = db.Query("gftCreatedLimitDesc", slug, since, limit)
+			rows, err = store.DB.Query("gftCreatedLimitDesc", slug, since, limit)
 		} else {
-			rows, err = db.Query("gftCreatedLimit", slug, since, limit)
+			rows, err = store.DB.Query("gftCreatedLimit", slug, since, limit)
 		}
 	}
 
@@ -163,7 +161,7 @@ func GetForumThreads(slug interface{}, limit []byte, since []byte, desc []byte) 
 		log.Fatalln(err)
 	}
 
-	var threads models.TreadArr
+	var threads models.ThreadArr
 
 	for rows.Next() {
 		thread := models.Thread{}
@@ -179,30 +177,30 @@ func GetForumThreads(slug interface{}, limit []byte, since []byte, desc []byte) 
 
 	if len(threads) == 0 {
 		var forumID int
-		if err = db.QueryRow("getForumIDBySlug", &slug).Scan(&forumID); err != nil {
-			return nil, dberrors.ErrForumNotFound
+		if err = store.DB.QueryRow("getForumIDBySlug", &slug).Scan(&forumID); err != nil {
+			return nil, models.ForumNotFound
 		}
 	}
 
 	return &threads, nil
 }
 
-func GetForumUsers(slug interface{}, limit []byte, since []byte, desc []byte) (*models.UsersArr, error) {
+func (store *DBStore) GetForumUsers(slug interface{}, limit []byte, since []byte, desc []byte) (*models.UsersArr, error) {
 	var err error
 
 	var rows *pgx.Rows
 
 	if since == nil {
 		if bytes.Equal([]byte("true"), desc) {
-			rows, err = db.Query("gfuLimitDesc", slug, limit)
+			rows, err = store.DB.Query("gfuLimitDesc", slug, limit)
 		} else {
-			rows, err = db.Query("gfuLimit", slug, limit)
+			rows, err = store.DB.Query("gfuLimit", slug, limit)
 		}
 	} else {
 		if bytes.Equal([]byte("true"), desc) {
-			rows, err = db.Query("gfuSinceLimitDesc", slug, since, limit)
+			rows, err = store.DB.Query("gfuSinceLimitDesc", slug, since, limit)
 		} else {
-			rows, err = db.Query("gfuSinceLimit", slug, since, limit)
+			rows, err = store.DB.Query("gfuSinceLimit", slug, since, limit)
 		}
 	}
 
@@ -224,8 +222,8 @@ func GetForumUsers(slug interface{}, limit []byte, since []byte, desc []byte) (*
 
 	if len(users) == 0 {
 		var forumID int
-		if err = db.QueryRow("getForumIDBySlug", &slug).Scan(&forumID); err != nil {
-			return nil, dberrors.ErrForumNotFound
+		if err = store.DB.QueryRow("getForumIDBySlug", &slug).Scan(&forumID); err != nil {
+			return nil, models.ForumNotFound
 		}
 	}
 

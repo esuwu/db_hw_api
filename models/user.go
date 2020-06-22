@@ -2,6 +2,7 @@ package models
 
 import (
 	"regexp"
+	"strings"
 )
 //easyjson:json
 type User struct {
@@ -18,7 +19,9 @@ type UserUpd struct {
 	Nickname *string `json:"nickname,omitempty"`
 }
 
-
+func (u *User) CompareNames(r *User) int {
+	return strings.Compare(strings.ToLower(u.Nickname), strings.ToLower(r.Nickname))
+}
 
 //easyjson:json
 type UsersArr []*User

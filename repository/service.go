@@ -2,8 +2,7 @@ package repository
 
 import (
 	"log"
-
-	"github.com/nd-r/tech-db-forum/models"
+	"main/models"
 )
 
 const statusQuery = `SELECT
@@ -12,8 +11,8 @@ const statusQuery = `SELECT
 	(SELECT count(*) FROM users) as user,
 	(SELECT count(*) FROM thread) as thread`
 
-func GetDBStatus() *models.Status {
-	tx, err := db.Begin()
+func (store *DBStore) GetStatus() *models.Status {
+	tx, err := store.DB.Begin()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -34,8 +33,8 @@ const deleteDBQuery = `TRUNCATE forum_users,
 RESTART IDENTITY
 CASCADE`
 
-func DeleteDB() {
-	tx, err := db.Begin()
+func (store *DBStore) Clear() {
+	tx, err := store.DB.Begin()
 	if err != nil {
 		log.Fatalln(err)
 	}

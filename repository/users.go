@@ -4,8 +4,7 @@ import (
 	"log"
 
 	"github.com/jackc/pgx"
-	"github.com/nd-r/tech-db-forum/dberrors"
-	"github.com/nd-r/tech-db-forum/models"
+	"main/models"
 )
 
 const createUserQuery = `INSERT INTO users
@@ -13,8 +12,8 @@ const createUserQuery = `INSERT INTO users
 VALUES ($1, $2, $3, $4)
 ON CONFLICT DO NOTHING`
 
-func CreateUser(user *models.User, nickname interface{}) (*models.UsersArr, error) {
-	tx, err := db.Begin()
+func (store *DBStore) CreateUser(user *models.User, nickname interface{}) (*models.UsersArr, error) {
+	tx, err := store.DB.Begin()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -45,19 +44,19 @@ func CreateUser(user *models.User, nickname interface{}) (*models.UsersArr, erro
 
 		rows.Close()
 		tx.Rollback()
-		return &existingUsers, dberrors.ErrUserExists
+		return &existingUsers, models.UserAlreadyExists
 	}
 
 	tx.Commit()
 	return nil, nil
 }
 
-func GetUserProfile(nickname interface{}) (*models.User, error) {
+func (store *DBStore) GetUserProfile(nickname interface{}) (*models.User, error) {
 	user := models.User{}
 
-	if err := db.QueryRow("getUserProfileQuery", &nickname).
+	if err := store.DB.QueryRow("getUserProfileQuery", &nickname).
 		Scan(&user.Nickname, &user.Email, &user.About, &user.Fullname); err != nil {
-		return nil, dberrors.ErrUserNotFound
+		return nil, models.UserNotFound
 	}
 
 	return &user, nil
@@ -74,8 +73,8 @@ RETURNING
 	about,
 	fullname`
 
-func UpdateUserProfile(newData *models.UserUpd, nickname interface{}) (*models.User, error) {
-	tx, err := db.Begin()
+func (store *DBStore) UpdateUserProfile(newData *models.UserUpd, nickname interface{}) (*models.User, error) {
+	tx, err := store.DB.Begin()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -86,9 +85,9 @@ func UpdateUserProfile(newData *models.UserUpd, nickname interface{}) (*models.U
 	if err = tx.QueryRow(updateUserProfileQuery, newData.About, newData.Email, newData.Fullname, &nickname).
 		Scan(&user.Nickname, &user.Email, &user.About, &user.Fullname); err != nil {
 		if _, ok := err.(pgx.PgError); ok {
-			return nil, dberrors.ErrUserConflict
+			return nil, models.ConflictOnUsers
 		}
-		return nil, dberrors.ErrUserNotFound
+		return nil, models.UserNotFound
 	}
 
 	return &user, nil

@@ -1,18 +1,17 @@
 package repository
 
 import (
+	"main/models"
 	"log"
 	"strings"
-
-	"github.com/nd-r/tech-db-forum/models"
 )
 
-func GetPostDetails(id *string, related []byte) (*models.PostDetails, int) {
+func (store *DBStore) GetPostDetails(id *string, related []byte) (*models.PostDetails, int) {
 
 	postDetails := models.PostDetails{}
 	postDetails.PostDetails = &models.Post{}
 
-	err := db.QueryRow("getPostDetailsQuery", id).
+	err := store.DB.QueryRow("getPostDetailsQuery", id).
 		Scan(&postDetails.PostDetails.Id, &postDetails.PostDetails.User_nick,
 		&postDetails.PostDetails.Message, &postDetails.PostDetails.Created,
 		&postDetails.PostDetails.Forum_slug, &postDetails.PostDetails.Thread_id,
@@ -31,18 +30,18 @@ func GetPostDetails(id *string, related []byte) (*models.PostDetails, int) {
 		switch val {
 		case "user":
 			postDetails.AuthorDetails = &models.User{}
-			db.QueryRow("getUserProfileQuery", &postDetails.PostDetails.User_nick).
+			store.DB.QueryRow("getUserProfileQuery", &postDetails.PostDetails.User_nick).
 				Scan(&postDetails.AuthorDetails.Nickname, &postDetails.AuthorDetails.Email,
 				&postDetails.AuthorDetails.About, &postDetails.AuthorDetails.Fullname)
 		case "forum":
 			postDetails.ForumDetails = &models.Forum{}
-			db.QueryRow("selectForumQuery", postDetails.PostDetails.Forum_slug).
+			store.DB.QueryRow("selectForumQuery", postDetails.PostDetails.Forum_slug).
 				Scan(&postDetails.ForumDetails.Slug, &postDetails.ForumDetails.Title,
 				&postDetails.ForumDetails.Posts, &postDetails.ForumDetails.Threads,
 				&postDetails.ForumDetails.Moderator)
 		case "thread":
 			postDetails.ThreadDetails = &models.Thread{}
-			db.QueryRow("getThreadById", postDetails.PostDetails.Thread_id).
+			store.DB.QueryRow("getThreadById", postDetails.PostDetails.Thread_id).
 				Scan(&postDetails.ThreadDetails.Id, &postDetails.ThreadDetails.Slug,
 				&postDetails.ThreadDetails.Title, &postDetails.ThreadDetails.Message,
 				&postDetails.ThreadDetails.Forum_slug, &postDetails.ThreadDetails.User_nick,
@@ -68,8 +67,8 @@ RETURNING id,
 	is_edited,
 	parent`
 
-func UpdatePostDetails(id *string, postUpd *models.PostUpdate) (*models.Post, int) {
-	tx, err := db.Begin()
+func (store *DBStore) UpdatePostDetails(id *string, postUpd *models.PostUpdate) (*models.Post, int) {
+	tx, err := store.DB.Begin()
 	if err != nil {
 		log.Fatalln(err)
 	}

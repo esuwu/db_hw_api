@@ -21,6 +21,7 @@ var ThreadNotFound = errors.New("ThreadNotFound")
 
 var PostsConflict = errors.New("ConflictOnPosts")
 
+//easyjson:json
 type ErrorString struct {
 	Message string `json:"message"`
 }

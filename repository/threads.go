@@ -3,12 +3,12 @@ package repository
 import (
 	"bytes"
 	"log"
+	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/jackc/pgx"
-	"github.com/nd-r/tech-db-forum/dberrors"
-	"github.com/nd-r/tech-db-forum/models"
+	"main/models"
 	"github.com/emirpasic/gods/sets/treeset"
 	"strings"
 	"context"
@@ -48,19 +48,14 @@ const getThreadIdAndForumSlugById = `SELECT id,
 FROM thread
 WHERE id=$1`
 
-func usersComparator(a, b interface{}) int {
-	u1 := a.(*models.User)
-	u2 := b.(*models.User)
 
-	return u1.Compare(u2)
-}
 
 func StringsCompare(a, b interface{}) int {
 	return strings.Compare(a.(string), b.(string))
 }
 
-func CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error) {
-	tx := TxMustBegin()
+func (store *DBStore) CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error) {
+	tx := TxBegin(store)
 	defer tx.Rollback()
 
 	batch := tx.BeginBatch()
@@ -75,12 +70,12 @@ func CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostAr
 	if err != nil {
 		if err = tx.QueryRow(getThreadIdAndForumSlugBySlug, slugOrID).Scan(&threadID, &forumSlug); err != nil {
 			log.Println(err)
-			return nil, dberrors.ErrThreadNotFound
+			return nil, models.ThreadNotFound
 		}
 	} else {
 		if err = tx.QueryRow(getThreadIdAndForumSlugById, threadID).Scan(&threadID, &forumSlug); err != nil {
 			log.Println(err)
-			return nil, dberrors.ErrThreadNotFound
+			return nil, models.ThreadNotFound
 		}
 	}
 
@@ -88,20 +83,15 @@ func CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostAr
 		return nil, nil
 	}
 
-	//claiming forum id
 	if err = tx.QueryRow("getForumIDBySlug", &forumSlug).Scan(&forumID); err != nil {
 		log.Fatalln(err)
 	}
 
-	//claiming ids for further posts
 	ids := make([]int64, 0, len(*postsArr))
 	if err = tx.QueryRow(generateNextIDs, len(*postsArr)).Scan(&ids); err != nil {
 		log.Fatalln(err)
 	}
 
-	/**
-	Check all parents for existence and same thread id
-	 */
 	var postsWaitingParents []int
 	userNicknameSet := treeset.NewWith(StringsCompare)
 
@@ -130,10 +120,10 @@ func CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostAr
 		if err = batch.QueryRowResults().
 			Scan(&parentThreadID, &(*postsArr)[postIdx].Parents);
 			err != nil {
-			return nil, dberrors.ErrPostsConflict
+			return nil, models.PostsConflict
 		}
 		if parentThreadID != 0 && parentThreadID != int64(threadID) {
-			return nil, dberrors.ErrPostsConflict
+			return nil, models.PostsConflict
 		}
 	}
 
@@ -145,15 +135,12 @@ func CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostAr
 		if err = batch.QueryRowResults().
 			Scan(&user.Nickname, &user.Email, &user.About, &user.Fullname);
 			err != nil {
-			return nil, dberrors.ErrUserNotFound
+			return nil, models.UserNotFound
 		}
 		userModelsOrderedSet = append(userModelsOrderedSet, &user)
 		userRealNicknameMap[userNickname.(string)] = user.Nickname
 	}
 
-	/**
-	end check
-	 */
 
 	for index, post := range *postsArr {
 		post.Id = int(ids[index])
@@ -197,14 +184,14 @@ func CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostAr
 	}
 
 	if ids[len(ids) - 1] == 1500000 {
-		Vaccuum()
+		Vaccuum(store)
 	}
 
 	return postsArr, nil
 }
 
-func PutVote(slugOrID interface{}, vote *models.Vote) (*models.Thread, error) {
-	tx, err := db.Begin()
+func (store *DBStore) PutVote(slugOrID interface{}, vote *models.Vote) (*models.Thread, error) {
+	tx, err := store.DB.Begin()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -227,18 +214,18 @@ func PutVote(slugOrID interface{}, vote *models.Vote) (*models.Thread, error) {
 	return &thread, nil
 }
 
-func GetThread(slugOrID interface{}) (*models.Thread, error) {
+func (store *DBStore) GetThread(slugOrID interface{}) (*models.Thread, error) {
 	thread := models.Thread{}
 
 	_, err := strconv.Atoi(slugOrID.(string))
 
 	if err != nil {
-		err = db.QueryRow("getThreadBySlug", slugOrID).
+		err = store.DB.QueryRow("getThreadBySlug", slugOrID).
 			Scan(&thread.Id, &thread.Slug, &thread.Title, &thread.Message, &thread.Forum_slug, &thread.User_nick, &thread.Created, &thread.Votes_count)
 		return &thread, err
 	}
 
-	err = db.QueryRow("getThreadById", slugOrID).Scan(&thread.Id, &thread.Slug, &thread.Title, &thread.Message, &thread.Forum_slug, &thread.User_nick, &thread.Created, &thread.Votes_count)
+	err = store.DB.QueryRow("getThreadById", slugOrID).Scan(&thread.Id, &thread.Slug, &thread.Title, &thread.Message, &thread.Forum_slug, &thread.User_nick, &thread.Created, &thread.Votes_count)
 	return &thread, err
 }
 
@@ -255,8 +242,8 @@ RETURNING  id,
 	created,
 	votes_count `
 
-func UpdateThreadDetails(slugOrID *string, thrUpdate *models.ThreadUpdate) (*models.Thread, int) {
-	tx, err := db.Begin()
+func (store *DBStore) UpdateThreadDetails(slugOrID *string, thrUpdate *models.ThreadUpdate) (*models.Thread, int) {
+	tx, err := store.DB.Begin()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -267,7 +254,7 @@ func UpdateThreadDetails(slugOrID *string, thrUpdate *models.ThreadUpdate) (*mod
 	if ID, err = strconv.Atoi(*slugOrID); err != nil {
 		if err = tx.QueryRow(getThreadIdAndForumSlugBySlug, slugOrID).Scan(&ID, &fs);
 			err != nil {
-			return nil, 404
+			return nil, http.StatusNotFound
 		}
 	}
 
@@ -277,41 +264,41 @@ func UpdateThreadDetails(slugOrID *string, thrUpdate *models.ThreadUpdate) (*mod
 		Scan(&thread.Id, &thread.Slug, &thread.Title, &thread.Message, &thread.Forum_slug,
 		&thread.User_nick, &thread.Created, &thread.Votes_count);
 		err != nil {
-		return nil, 404
+		return nil, http.StatusNotFound
 	}
-	return &thread, 200
+	return &thread, http.StatusOK
 }
 
-func getThreadPostsFlat(ID int, limit []byte, since []byte, desc []byte) (*models.PostArr, int) {
+func getThreadPostsFlat(store *DBStore, ID int, limit []byte, since []byte, desc []byte) (*models.PostArr, int) {
 	var err error
 	var rows *pgx.Rows
 
 	if since != nil {
 		if limit != nil {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsFlatSinceLimitDesc", ID, limit, since)
+				rows, err = store.DB.Query("getPostsFlatSinceLimitDesc", ID, limit, since)
 			} else {
-				rows, err = db.Query("getPostsFlatSinceLimit", ID, limit, since)
+				rows, err = store.DB.Query("getPostsFlatSinceLimit", ID, limit, since)
 			}
 		} else {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsFlatSinceLimitDesc", ID, nil, since)
+				rows, err = store.DB.Query("getPostsFlatSinceLimitDesc", ID, nil, since)
 			} else {
-				rows, err = db.Query("getPostsFlatSinceLimit", ID, nil, since)
+				rows, err = store.DB.Query("getPostsFlatSinceLimit", ID, nil, since)
 			}
 		}
 	} else {
 		if limit != nil {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsFlatLimitDesc", ID, limit)
+				rows, err = store.DB.Query("getPostsFlatLimitDesc", ID, limit)
 			} else {
-				rows, err = db.Query("getPostsFlatLimit", ID, limit)
+				rows, err = store.DB.Query("getPostsFlatLimit", ID, limit)
 			}
 		} else {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsFlatLimitDesc", ID, nil)
+				rows, err = store.DB.Query("getPostsFlatLimitDesc", ID, nil)
 			} else {
-				rows, err = db.Query("getPostsFlatLimit", ID, nil)
+				rows, err = store.DB.Query("getPostsFlatLimit", ID, nil)
 			}
 		}
 	}
@@ -335,39 +322,39 @@ func getThreadPostsFlat(ID int, limit []byte, since []byte, desc []byte) (*model
 	}
 	rows.Close()
 
-	return &posts, 200
+	return &posts, http.StatusOK
 }
 
-func getThreadPostsTree(ID int, limit []byte, since []byte, desc []byte) (*models.PostArr, int) {
+func getThreadPostsTree(store *DBStore, ID int, limit []byte, since []byte, desc []byte) (*models.PostArr, int) {
 	var err error
 	var rows *pgx.Rows
 
 	if since != nil {
 		if limit != nil {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsTreeSinceLimitDesc", ID, limit, since)
+				rows, err = store.DB.Query("getPostsTreeSinceLimitDesc", ID, limit, since)
 			} else {
-				rows, err = db.Query("getPostsTreeSinceLimit", ID, limit, since)
+				rows, err = store.DB.Query("getPostsTreeSinceLimit", ID, limit, since)
 			}
 		} else {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsTreeSinceLimitDesc", ID, nil, since)
+				rows, err = store.DB.Query("getPostsTreeSinceLimitDesc", ID, nil, since)
 			} else {
-				rows, err = db.Query("getPostsTreeSinceLimit", ID, nil, since)
+				rows, err = store.DB.Query("getPostsTreeSinceLimit", ID, nil, since)
 			}
 		}
 	} else {
 		if limit != nil {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsTreeLimitDesc", ID, limit)
+				rows, err = store.DB.Query("getPostsTreeLimitDesc", ID, limit)
 			} else {
-				rows, err = db.Query("getPostsTreeLimit", ID, limit)
+				rows, err = store.DB.Query("getPostsTreeLimit", ID, limit)
 			}
 		} else {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsTreeLimitDesc", ID, nil)
+				rows, err = store.DB.Query("getPostsTreeLimitDesc", ID, nil)
 			} else {
-				rows, err = db.Query("getPostsTreeLimit", ID, nil)
+				rows, err = store.DB.Query("getPostsTreeLimit", ID, nil)
 			}
 		}
 	}
@@ -391,39 +378,61 @@ func getThreadPostsTree(ID int, limit []byte, since []byte, desc []byte) (*model
 	}
 	rows.Close()
 
-	return &posts, 200
+	return &posts, http.StatusOK
 }
+/*
+post.ParentTreeSort: `
+			WITH roots AS (
+				SELECT DISTINCT path[1]
+				FROM posts
+				WHERE thread_id = $1
+				ORDER BY path[1] DESC
+				LIMIT $2
+			)
+			SELECT id,
+				   thread_id,
+				   author_nickname,
+				   forum_slug,
+				   is_edited,
+				   message,
+				   parent,
+				   created
+			FROM posts
+			WHERE thread_id = $1
+			  AND path[1] IN (SELECT * FROM roots)
+			ORDER BY path[1] DESC, path[2:]`,
+*/
 
-func getThreadPostsParentTree(ID int, limit []byte, since []byte, desc []byte) (*models.PostArr, int) {
+func getThreadPostsParentTree(store *DBStore, ID int, limit []byte, since []byte, desc []byte) (*models.PostArr, int) {
 	var err error
 	var rows *pgx.Rows
 
 	if since != nil {
 		if limit != nil {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsParentTreeSinceLimitDesc", ID, limit, since)
+				rows, err = store.DB.Query("getPostsParentTreeSinceLimitDesc", ID, limit, since)
 			} else {
-				rows, err = db.Query("getPostsParentTreeSinceLimit", ID, limit, since)
+				rows, err = store.DB.Query("getPostsParentTreeSinceLimit", ID, limit, since)
 			}
 		} else {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsParentTreeSinceLimitDesc", ID, nil, since)
+				rows, err = store.DB.Query("getPostsParentTreeSinceLimitDesc", ID, nil, since)
 			} else {
-				rows, err = db.Query("getPostsParentTreeSinceLimit", ID, nil, since)
+				rows, err = store.DB.Query("getPostsParentTreeSinceLimit", ID, nil, since)
 			}
 		}
 	} else {
 		if limit != nil {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsParentTreeLimitDesc", ID, limit)
+	/*men*/			rows, err = store.DB.Query("getPostsParentTreeLimitDesc", ID, limit)
 			} else {
-				rows, err = db.Query("getPostsParentTreeLimit", ID, limit)
+				rows, err = store.DB.Query("getPostsParentTreeLimit", ID, limit)
 			}
 		} else {
 			if bytes.Equal(desc, []byte("true")) {
-				rows, err = db.Query("getPostsParentTreeLimitDesc", ID, nil)
+				rows, err = store.DB.Query("getPostsParentTreeLimitDesc", ID, nil)
 			} else {
-				rows, err = db.Query("getPostsParentTreeLimit", ID, nil)
+				rows, err = store.DB.Query("getPostsParentTreeLimit", ID, nil)
 			}
 		}
 	}
@@ -447,29 +456,32 @@ func getThreadPostsParentTree(ID int, limit []byte, since []byte, desc []byte) (
 	}
 	rows.Close()
 
-	return &posts, 200
+	return &posts, http.StatusOK
 }
 
-func GetThreadPosts(slugOrID *string, limit []byte, since []byte, sort []byte, desc []byte) (*models.PostArr, int) {
+func (store *DBStore) GetThreadPosts(slugOrID *string, limit []byte, since []byte, sort []byte, desc []byte) (*models.PostArr, int) {
 	var ID int
 	var err error
 
 	if _, err = strconv.Atoi(*slugOrID); err != nil {
-		if err = db.QueryRow("checkThreadIdBySlug", slugOrID).Scan(&ID); err != nil {
-			return nil, 404
+		if err = store.DB.QueryRow("checkThreadIdBySlug", slugOrID).Scan(&ID); err != nil {
+			return nil, http.StatusNotFound
 		}
 	} else {
-		if err = db.QueryRow("checkThreadIdById", slugOrID).Scan(&ID); err != nil {
-			return nil, 404
+		if err = store.DB.QueryRow("checkThreadIdById", slugOrID).Scan(&ID); err != nil {
+			return nil, http.StatusNotFound
 		}
 	}
 
 	switch true {
 	case bytes.Equal([]byte("tree"), sort):
-		return getThreadPostsTree(ID, limit, since, desc)
+		postsTree, status := getThreadPostsTree(store, ID, limit, since, desc)
+		return postsTree, status
 	case bytes.Equal([]byte("parent_tree"), sort):
-		return getThreadPostsParentTree(ID, limit, since, desc)
+		postsParentTree, status := getThreadPostsParentTree(store, ID, limit, since, desc)
+		return postsParentTree, status
 	default:
-		return getThreadPostsFlat(ID, limit, since, desc)
+		PostsFlat, status := getThreadPostsFlat(store, ID, limit, since, desc)
+		return PostsFlat, status
 	}
 }

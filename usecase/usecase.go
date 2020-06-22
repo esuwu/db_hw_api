@@ -17,9 +17,12 @@ type UseCase interface {
 	Clear()
 	CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error)
 	GetThread(slugOrID interface{}) (*models.Thread, error)
-	UpdateThreadDetails(slugOrID *string, thread *models.ThreadUpdate) (*models.Thread, int)
-	GetThreadPosts(slugOrID interface{}, limit []byte, since []byte, sort []byte, desc []byte) (*models.PostArr, int)
+	UpdateThreadDetails(slugOrID *string, threadUpd *models.ThreadUpdate) (*models.Thread, int)
+	GetThreadPosts(slugOrID *string, limit []byte, since []byte, sort []byte, desc []byte) (*models.PostArr, int)
 	PutVote(slugOrID interface{}, vote *models.Vote) (*models.Thread, error)
+	CreateUser(user *models.User, nickname interface{}) (*models.UsersArr, error)
+	GetUserProfile(nickname interface{}) (*models.User, error)
+	UpdateUserProfile(userUpd *models.UserUpd, nickname interface{}) (*models.User, error)
 }
 
 type useCase struct {
@@ -32,10 +35,11 @@ func NewUseCase(repo repository.Repo) UseCase {
 	}
 }
 
-func (u *useCase) GetStatus() (models.Status, error) {
+
+func (u *useCase) GetStatus() *models.Status {
 	return u.repository.GetStatus()
 }
-
-func (u *useCase) RemoveAllData() error {
-	return u.repository.ReloadDB()
+func (u *useCase) Clear() {
+	u.repository.Clear()
+	return
 }

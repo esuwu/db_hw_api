@@ -1,13 +1,10 @@
 package delivery
 
 import (
-	"bytes"
-	"github.com/jackc/pgx"
+	"encoding/json"
 	"github.com/valyala/fasthttp"
-	"log"
 	models "main/models"
 	"net/http"
-	"strings"
 )
 
 
@@ -31,13 +28,14 @@ func (handlers *Handlers) CreateForum(ctx *fasthttp.RequestCtx) {
 
 	case models.UserNotFound:
 		ctx.SetStatusCode(http.StatusNotFound)
-		response = models.ErrorMessage
+		response, _ = json.Marshal(err)
+
 	}
 	ctx.SetContentType("application/json")
 	ctx.Write(response)
 }
 
-func (handlers *Handlers) GetForumDetails(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers) GetForum(ctx *fasthttp.RequestCtx) {
 	slug := ctx.UserValue("slug")
 	var response []byte
 
@@ -48,15 +46,15 @@ func (handlers *Handlers) GetForumDetails(ctx *fasthttp.RequestCtx) {
 		case nil:
 			response, _ = forum.MarshalJSON()
 		default:
-			ctx.SetStatusCode(404)
-			response = models.ErrorMessage
+			ctx.SetStatusCode(http.StatusNotFound)
+			response, _ = json.Marshal(err)
 		}
 
 	ctx.SetContentType("application/json")
 	ctx.Write(response)
 }
 
-func (handlers *Handlers) GetForumThreads(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers) GetThreads(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("application/json")
 
 	slug := ctx.UserValue("slug")
@@ -76,20 +74,21 @@ func (handlers *Handlers) GetForumThreads(ctx *fasthttp.RequestCtx) {
 		response, _ = threadArr.MarshalJSON()
 	case models.ForumNotFound:
 		ctx.SetStatusCode(http.StatusNotFound)
-		response = models.ErrorMessage
+		response, _ = json.Marshal(error)
+		ctx.SetContentType("application/json")
 	}
 
 	ctx.Write(response)
 }
 
-func (handlers *Handlers) GetForumUsers(ctx *fasthttp.RequestCtx) {
+func (handlers *Handlers) GetUsers(ctx *fasthttp.RequestCtx) {
 
-	slug := ctx.UserValue("slug")
-	limit := ctx.QueryArgs().Peek("limit")
-	since := ctx.QueryArgs().Peek("since")
-	desc := ctx.QueryArgs().Peek("desc")
+	slugKey := ctx.UserValue("slug")
+	limitKey := ctx.QueryArgs().Peek("limit")
+	sinceKey := ctx.QueryArgs().Peek("since")
+	descKey := ctx.QueryArgs().Peek("desc")
 
-	users, err := handlers.usecases.GetForumUsers(&slug, limit, since, desc)
+	users, err := handlers.usecases.GetForumUsers(&slugKey, limitKey, sinceKey, descKey)
 
 	var response []byte
 
@@ -103,7 +102,8 @@ func (handlers *Handlers) GetForumUsers(ctx *fasthttp.RequestCtx) {
 		}
 	case models.ForumNotFound:
 		ctx.SetStatusCode(http.StatusNotFound)
-		response = models.ErrorMessage
+		response, _ = json.Marshal(err)
+		ctx.SetContentType("application/json")
 	}
 
 	ctx.SetContentType("application/json")
