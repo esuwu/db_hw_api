@@ -75,7 +75,11 @@ func (handlers *Handlers) UpdateThread(ctx *fasthttp.RequestCtx) {
 		resp, _ := thread.MarshalJSON()
 		ctx.Write(resp)
 	case http.StatusNotFound:
-		ctx.Write(models.ErrorMessage)
+		resp := models.ErrorString{}
+		resp.Message = "Can't find thread by slug: " + slugOrID
+		response, _ := resp.MarshalJSON()
+		ctx.SetContentType("application/json")
+		ctx.Write(response)
 	}
 }
 
@@ -103,7 +107,7 @@ func (handlers *Handlers) GetPosts(ctx *fasthttp.RequestCtx) {
 	case http.StatusNotFound:
 		resp := models.ErrorString{}
 		resp.Message = "Can't find thread by slug: " + slugOrID
-		response, _ := json.Marshal(resp)
+		response, _ := resp.MarshalJSON()
 		ctx.SetContentType("application/json")
 		ctx.Write(response)
 	}

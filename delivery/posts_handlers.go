@@ -52,7 +52,11 @@ func  (handlers *Handlers)  GetPostFull(ctx *fasthttp.RequestCtx) {
 		ctx.Write(resp)
 	case http.StatusNotFound:
 
-		ctx.Write(models.ErrorMessage)
+		resp := models.ErrorString{}
+		resp.Message = "Can't find post with id: " + id
+		response, _ := resp.MarshalJSON()
+		ctx.SetContentType("application/json")
+		ctx.Write(response)
 	}
 }
 
@@ -71,6 +75,10 @@ func (handlers *Handlers) UpdatePost(ctx *fasthttp.RequestCtx) {
 		resp, _ := post.MarshalJSON()
 		ctx.Write(resp)
 	case http.StatusNotFound:
-		ctx.Write(models.ErrorMessage)
+		resp := models.ErrorString{}
+		resp.Message = "Can't find post with id: " + id
+		response, _ := resp.MarshalJSON()
+		ctx.SetContentType("application/json")
+		ctx.Write(response)
 	}
 }
