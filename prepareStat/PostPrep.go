@@ -164,6 +164,30 @@ JOIN (
 ON p.main_parent=s.id
 ORDER BY p.parents`
 
+/*
+			WITH roots AS (
+				SELECT DISTINCT path[1]
+				FROM posts
+				WHERE thread_id = $1
+				  AND parent IS NULL
+				  AND path[1] < (SELECT path[1] FROM posts WHERE id = $2)
+         		ORDER BY path[1] DESC
+				LIMIT $3
+			)
+			SELECT id,
+				   thread_id,
+				   author_nickname,
+				   forum_slug,
+				   is_edited,
+				   message,
+				   parent,
+				   created
+			FROM posts
+			WHERE thread_id = $1
+			  AND path[1] IN (SELECT * FROM roots)
+			ORDER BY path[1] DESC, path[2:]`
+*/
+
 const getPostsParentTreeSinceLimitDesc = `SELECT p.id,
 	p.user_nick::TEXT,
 	p.message,
@@ -184,7 +208,29 @@ JOIN (
 	ORDER BY id DESC
 	LIMIT $2::TEXT::INTEGER) s
 ON p.main_parent=s.id
-ORDER BY p.parents DESC`
+ORDER BY p.parents[1] DESC, p.parents[2:]`
+
+//const getPostsParentTreeSinceLimitDesc = `SELECT p.id,
+//	p.user_nick::TEXT,
+//	p.message,
+//	p.created,
+//	p.forum_slug::TEXT,
+//	p.thread_id,
+//	p.is_edited,
+//	p.parent
+//FROM post p
+//JOIN (
+//	SELECT id
+//	FROM post
+//	WHERE parent=0
+//		AND thread_id = $1
+//		AND main_parent < (SELECT main_parent
+//			FROM post
+//			WHERE id = $3::TEXT::INTEGER)
+//	ORDER BY id DESC
+//	LIMIT $2::TEXT::INTEGER) s
+//ON p.main_parent=s.id
+//ORDER BY p.parents DESC`
 
 /*
 post.ParentTreeSort: `
@@ -208,7 +254,6 @@ post.ParentTreeSort: `
 			  AND path[1] IN (SELECT * FROM roots)
 			ORDER BY path[1] DESC, path[2:]`,
 */
-
 const getPostsParentTreeLimitDesc = `SELECT p.id,
 	p.user_nick::TEXT,
 	p.message,
@@ -225,7 +270,25 @@ JOIN (
 	ORDER BY id DESC
 	LIMIT $2::TEXT::INTEGER) s
 ON p.main_parent=s.id
-ORDER BY p.parents DESC`
+ORDER BY p.parents[1] DESC, p.parents[2:]`
+
+//const getPostsParentTreeLimitDesc = `SELECT p.id,
+//	p.user_nick::TEXT,
+//	p.message,
+//	p.created,
+//	p.forum_slug::TEXT,
+//	p.thread_id,
+//	p.is_edited,
+//	p.parent
+//FROM post p
+//JOIN (
+//	SELECT id
+//	FROM post
+//	WHERE parent=0 AND thread_id = $1
+//	ORDER BY id DESC
+//	LIMIT $2::TEXT::INTEGER) s
+//ON p.main_parent=s.id
+//ORDER BY p.parents DESC`
 
 const getPostsParentTreeLimit = `SELECT p.id,
 	p.user_nick::TEXT,

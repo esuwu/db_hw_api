@@ -101,7 +101,11 @@ func (handlers *Handlers) GetPosts(ctx *fasthttp.RequestCtx) {
 			ctx.Write([]byte("[]"))
 		}
 	case http.StatusNotFound:
-		ctx.Write(models.ErrorMessage)
+		resp := models.ErrorString{}
+		resp.Message = "Can't find thread by slug: " + slugOrID
+		response, _ := json.Marshal(resp)
+		ctx.SetContentType("application/json")
+		ctx.Write(response)
 	}
 }
 

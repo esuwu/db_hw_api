@@ -11,7 +11,7 @@ DROP FUNCTION IF EXISTS thread_insert();
 CREATE TABLE users (
   id       SERIAL,
 
-  nickname CITEXT NOT NULL,
+  nickname CITEXT COLLATE ucs_basic NOT NULL,
   email    CITEXT NOT NULL,
 
   about    TEXT DEFAULT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE thread (
   user_id     INTEGER,
   user_nick   CITEXT  NOT NULL,
 
-  created     TIMESTAMPTZ,
+  created     TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   votes_count INTEGER DEFAULT 0
 );
 
@@ -118,7 +118,7 @@ CREATE TABLE post (
   user_nick   TEXT      NOT NULL,
 
   message     TEXT      NOT NULL,
-  created     TIMESTAMPTZ,
+  created     TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
   forum_slug  TEXT      NOT NULL,
   thread_id   INTEGER   NOT NULL,
@@ -166,7 +166,7 @@ CREATE TABLE vote (
 
 CREATE TABLE forum_users (
   forumId  INTEGER,
-  nickname TEXT,
+  nickname CITEXT COLLATE ucs_basic NOT NULL,
   email    TEXT,
   about    TEXT,
   fullname TEXT

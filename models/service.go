@@ -21,7 +21,7 @@ DROP FUNCTION IF EXISTS thread_insert();
 CREATE TABLE users (
   id       SERIAL,
 
-  nickname CITEXT NOT NULL,
+  nickname CITEXT COLLATE ucs_basic NOT NULL,
   email    CITEXT NOT NULL,
 
   about    TEXT DEFAULT NULL,
@@ -176,7 +176,7 @@ CREATE TABLE vote (
 
 CREATE TABLE forum_users (
   forumId  INTEGER,
-  nickname TEXT,
+  nickname CITEXT COLLATE ucs_basic NOT NULL,
   email    TEXT,
   about    TEXT,
   fullname TEXT
@@ -186,5 +186,4 @@ CREATE UNIQUE INDEX forum_users_forum_id_nickname_index2
   ON forum_users (forumId, lower(nickname));
 
 CREATE INDEX forum_users_covering_index2
-  ON forum_users (forumId, lower(nickname), nickname, email, about, fullname);
-`
+  ON forum_users (forumId, lower(nickname), nickname, email, about, fullname);`

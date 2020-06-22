@@ -23,6 +23,19 @@ ON CONFLICT DO NOTHING`
 // CLAIMING
 //
 
+/*
+`
+		SELECT nickname,
+			   email,
+			   fullname,
+			   about
+		FROM forums_users
+		WHERE forum_slug = $1
+		ORDER BY user_nickname
+		LIMIT $2`
+
+*/
+
 const gfuLimit = `SELECT nickname::TEXT,
 	email::TEXT,
 	about,
@@ -32,6 +45,7 @@ WHERE forumid = (SELECT id FROM forum WHERE slug=$1)
 ORDER BY lower(nickname)
 LIMIT $2::TEXT::INTEGER`
 
+
 const gfuLimitDesc = `SELECT nickname::TEXT,
 	email::TEXT,
 	about,
@@ -40,6 +54,7 @@ FROM forum_users
 WHERE forumid = (SELECT id FROM forum WHERE slug=$1)
 ORDER BY lower(nickname) DESC
 LIMIT $2::TEXT::INTEGER`
+
 
 const gfuSinceLimit = `SELECT nickname::TEXT,
 	email::TEXT,

@@ -14,7 +14,7 @@ import (
 	"context"
 )
 
-var created, _ = time.Parse("2006-01-02T15:04:05.000000Z", "2006-01-02T15:04:05.010000Z")
+var created = time.Now()
 
 type forumUser struct {
 	userNickname *string
