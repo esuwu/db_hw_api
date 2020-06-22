@@ -58,7 +58,6 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 
 	batch := tx.BeginBatch()
 	defer batch.Close()
-	created := time.Now()
 	var err error
 	var forumID, threadID int
 	var forumSlug string
@@ -144,7 +143,7 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 		post.Id = int(ids[index])
 		post.Thread_id = threadID
 		post.Forum_slug = forumSlug
-		post.Created = created
+		post.Created = timer
 		post.User_nick = userRealNicknameMap[strings.ToLower(post.User_nick)]
 		post.Parents = append(post.Parents, int32(ids[index]))
 
@@ -184,7 +183,7 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 	if ids[len(ids) - 1] == 1500000 {
 		Vaccuum(store)
 	}
-
+	tx.Commit()
 	return postsArr, nil
 }
 
