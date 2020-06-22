@@ -14,7 +14,7 @@ import (
 	repository "main/repository"
 	useCase "main/usecase"
 )
-const initPath = "./db.sql"
+const initPath = "./init/db.sql"
 func InitPrepStatement(db *pgx.ConnPool){
 
 	prepStat.PrepareForum(db)
@@ -65,7 +65,7 @@ func main() {
 		},
 		MaxConnections: 50,
 	})
-
+	tx, err := db.Begin()
 	usecases := useCase.NewUseCase(repository.NewDBStore(db))
 	api := delivery.NewHandlers(usecases)
 
@@ -76,7 +76,11 @@ func main() {
 
 	schema := string(buf)
 
-	_, err = db.Exec(schema)
+	if _, err = tx.Exec(schema); err != nil {
+		log.Println(err)
+		tx.Rollback()
+	}
+	tx.Commit()
 
 	InitPrepStatement(db)
 	if err != nil {
