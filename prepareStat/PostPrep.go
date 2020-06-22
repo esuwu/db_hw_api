@@ -213,8 +213,8 @@ const selectParentAndParents = `SELECT thread_id,
 FROM post
 WHERE id = $1`
 
-const insertIntoPost = `INSERT INTO post(id, user_nick, message, created, forum_slug, thread_id, parent, parents, main_parent)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+const insertIntoPost = `INSERT INTO post(id, user_nick, message, forum_slug, thread_id, parent, parents, main_parent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 func PreparePost(tx *pgx.ConnPool) {
 	if _, err := tx.Prepare("getPostDetailsQuery", getPostDetailsQuery); err != nil {
