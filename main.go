@@ -3,18 +3,18 @@ package main
 import (
 	//"database/sql"
 	"fmt"
+	"github.com/buaazp/fasthttprouter"
+	"github.com/jackc/pgx"
+	_ "github.com/lib/pq"
+	"github.com/valyala/fasthttp"
+	"io/ioutil"
+	"log"
 	delivery "main/delivery"
-	models "main/models"
 	prepStat "main/prepareStat"
 	repository "main/repository"
 	useCase "main/usecase"
-	"github.com/jackc/pgx"
-	_ "github.com/lib/pq"
-	"log"
-	"github.com/valyala/fasthttp"
-	"github.com/buaazp/fasthttprouter"
 )
-
+const initPath = "./db.sql"
 func InitPrepStatement(db *pgx.ConnPool){
 
 	prepStat.PrepareForum(db)
@@ -69,7 +69,15 @@ func main() {
 	usecases := useCase.NewUseCase(repository.NewDBStore(db))
 	api := delivery.NewHandlers(usecases)
 
-	_, err = db.Exec(models.InitScript)
+	buf, err := ioutil.ReadFile(initPath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	schema := string(buf)
+
+	_, err = db.Exec(schema)
+
 	InitPrepStatement(db)
 	if err != nil {
 		fmt.Println(err)
