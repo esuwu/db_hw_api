@@ -6,13 +6,6 @@ import (
 	"github.com/jackc/pgx"
 )
 
-/**
-User queries
- */
-
-//
-// CLAIMING
-//
 
 const selectUsrByNickOrEmailQuery = `SELECT nickname::TEXT,
 	email::TEXT,

@@ -15,26 +15,6 @@ const insertIntoForumUsers = `INSERT INTO forum_users (forumid,
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT DO NOTHING`
 
-//
-// UPDATING
-//
-
-//
-// CLAIMING
-//
-
-/*
-`
-		SELECT nickname,
-			   email,
-			   fullname,
-			   about
-		FROM forums_users
-		WHERE forum_slug = $1
-		ORDER BY user_nickname
-		LIMIT $2`
-
-*/
 
 const gfuLimit = `SELECT nickname::TEXT,
 	email::TEXT,

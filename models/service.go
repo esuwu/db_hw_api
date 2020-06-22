@@ -9,7 +9,6 @@ type Status struct{
 }
 
 const InitScript = `CREATE EXTENSION IF NOT EXISTS CITEXT;
---SET ENABLE_SEQSCAN = 'off';
 
 DROP TABLE IF EXISTS users, forum, thread, post, vote, forum_users CASCADE;
 

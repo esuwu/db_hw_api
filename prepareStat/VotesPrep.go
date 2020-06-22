@@ -6,13 +6,6 @@ import (
 	"github.com/jackc/pgx"
 )
 
-/**
-Vote queries
- */
-
-//
-//INSERTING
-//
 
 const putVoteByThrID = `WITH sub AS (
 	INSERT INTO vote (user_id, thread_id, voice)
@@ -60,14 +53,6 @@ RETURNING id,
 	created,
 	votes_count`
 
-
-//
-// UPDATING
-//
-
-//
-// CLAIMING
-//
 
 func PrepareVotes(tx *pgx.ConnPool){
 	if _, err := tx.Prepare("putVoteByThrID", putVoteByThrID); err != nil {

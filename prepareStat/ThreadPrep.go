@@ -6,13 +6,6 @@ import (
 	"github.com/jackc/pgx"
 )
 
-/**
-Thread queries
- */
-
-//
-// CLAIMING
-//
 
 const getThreadById = `SELECT id,
 	slug::TEXT,
