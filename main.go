@@ -79,7 +79,7 @@ func main() {
 
 
 	log.Println("http server started on 5000 port: ")
-	err = fasthttp.ListenAndServe("localhost:5000", router.Handler)
+	err = fasthttp.ListenAndServe(":5000", router.Handler)
 	log.Println(err)
 	if err != nil {
 		log.Println(err)

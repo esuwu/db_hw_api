@@ -9,11 +9,10 @@ ALTER SYSTEM SET random_page_cost = '0.1';
 
 CREATE EXTENSION IF NOT EXISTS CITEXT;
 
-
+DROP TABLE IF EXISTS users, forum, thread, post, vote, forum_users CASCADE;
 DROP FUNCTION IF EXISTS thread_insert();
 
 
-DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
   id       SERIAL,
 
@@ -33,8 +32,6 @@ CREATE UNIQUE INDEX users_email_idx ON users (email);
 CREATE INDEX ON users (nickname, email);
 
 
-
-DROP TABLE IF EXISTS forum CASCADE;
 CREATE TABLE forum (
   id        SERIAL PRIMARY KEY,
   slug      CITEXT  NOT NULL,
@@ -52,8 +49,6 @@ CREATE INDEX forum_slug_id_idx ON forum (slug, id);
 
 CREATE INDEX on forum (slug, id, title, moderator, threads, posts);
 
-
-DROP TABLE IF EXISTS thread CASCADE;
 CREATE TABLE thread (
   id          SERIAL PRIMARY KEY,
 
@@ -70,6 +65,7 @@ CREATE TABLE thread (
   created     TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   votes_count INTEGER DEFAULT 0
 );
+
 
 CREATE FUNCTION thread_insert()
   RETURNS TRIGGER AS
@@ -108,7 +104,6 @@ CREATE UNIQUE INDEX thread_cover_idx
   ON thread (forum_id, created, id, slug, title, message, forum_slug, user_nick, created, votes_count);
 
 
-DROP TABLE IF EXISTS post CASCADE;
 CREATE TABLE post (
   id          SERIAL primary key,
 
@@ -141,7 +136,6 @@ CREATE INDEX parent_tree_3_1_idx ON post (main_parent, parents DESC, id);
 
 CREATE INDEX parent_tree_4_idx ON post (id, main_parent);
 
-DROP TABLE IF EXISTS vote CASCADE;
 CREATE TABLE vote (
   id         SERIAL,
 
@@ -154,7 +148,6 @@ CREATE TABLE vote (
 );
 
 
-DROP TABLE IF EXISTS forum_users CASCADE;
 CREATE TABLE forum_users (
   forumId  INTEGER,
   nickname CITEXT COLLATE ucs_basic NOT NULL,
