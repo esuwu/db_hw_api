@@ -3,6 +3,7 @@ package repository
 import (
 	"github.com/jackc/pgx"
 	models "main/models"
+	"time"
 )
 
 type Repo interface {
@@ -15,7 +16,7 @@ type Repo interface {
 	UpdatePostDetails(id *string, postUpd *models.PostUpdate) (*models.Post, int)
 	GetStatus() *models.Status
 	Clear()
-	CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error)
+	CreatePosts(timer time.Time,slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error)
     GetThread(slugOrID interface{}) (*models.Thread, error)
 	PutVote(slugOrID interface{}, vote *models.Vote) (*models.Thread, error)
 	UpdateThreadDetails(slugOrID *string, thrUpdate *models.ThreadUpdate) (*models.Thread, int)

@@ -6,7 +6,7 @@ type Post struct {
 	Id         int        `json:"id"`
 	User_nick  string     `json:"author"`
 	Message    string     `json:"message"`
-	Created    *time.Time `json:"created"`
+	Created    time.Time `json:"created,omitempty"`
 	Forum_slug string     `json:"forum"`
 	Thread_id  int        `json:"thread"`
 	Is_edited  bool       `json:"isEdited"`

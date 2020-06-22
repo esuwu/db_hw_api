@@ -2,19 +2,17 @@ package repository
 
 import (
 	"bytes"
+	"context"
+	"github.com/emirpasic/gods/sets/treeset"
+	"github.com/jackc/pgx"
 	"log"
+	"main/models"
 	"net/http"
 	"strconv"
-	"time"
-
-	"github.com/jackc/pgx"
-	"main/models"
-	"github.com/emirpasic/gods/sets/treeset"
 	"strings"
-	"context"
+	"time"
 )
 
-var created = time.Now()
 
 type forumUser struct {
 	userNickname *string
@@ -54,13 +52,13 @@ func StringsCompare(a, b interface{}) int {
 	return strings.Compare(a.(string), b.(string))
 }
 
-func (store *DBStore) CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error) {
+func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error) {
 	tx := TxBegin(store)
 	defer tx.Rollback()
 
 	batch := tx.BeginBatch()
 	defer batch.Close()
-
+	created := time.Now()
 	var err error
 	var forumID, threadID int
 	var forumSlug string
@@ -146,7 +144,7 @@ func (store *DBStore) CreatePosts(slugOrID interface{}, postsArr *models.PostArr
 		post.Id = int(ids[index])
 		post.Thread_id = threadID
 		post.Forum_slug = forumSlug
-		post.Created = &created
+		post.Created = created
 		post.User_nick = userRealNicknameMap[strings.ToLower(post.User_nick)]
 		post.Parents = append(post.Parents, int32(ids[index]))
 

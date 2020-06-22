@@ -7,7 +7,6 @@ import (
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
-	time "time"
 )
 
 // suppress unused package warning
@@ -495,16 +494,8 @@ func easyjson5a72dc82DecodeMainModels5(in *jlexer.Lexer, out *Post) {
 		case "message":
 			out.Message = string(in.String())
 		case "created":
-			if in.IsNull() {
-				in.Skip()
-				out.Created = nil
-			} else {
-				if out.Created == nil {
-					out.Created = new(time.Time)
-				}
-				if data := in.Raw(); in.Ok() {
-					in.AddError((*out.Created).UnmarshalJSON(data))
-				}
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Created).UnmarshalJSON(data))
 			}
 		case "forum":
 			out.Forum_slug = string(in.String())
@@ -569,11 +560,7 @@ func easyjson5a72dc82EncodeMainModels5(out *jwriter.Writer, in Post) {
 	{
 		const prefix string = ",\"created\":"
 		out.RawString(prefix)
-		if in.Created == nil {
-			out.RawString("null")
-		} else {
-			out.Raw((*in.Created).MarshalJSON())
-		}
+		out.Raw((in.Created).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"forum\":"

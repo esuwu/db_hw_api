@@ -1,6 +1,9 @@
 package useCase
 
-import "main/models"
+import (
+	"main/models"
+	"time"
+)
 
 func (u *useCase) GetPostDetails(id *string, related []byte) (*models.PostDetails, int){
 	postDetails, status := u.repository.GetPostDetails(id, related)
@@ -12,6 +15,7 @@ func (u *useCase) UpdatePostDetails(id *string, postUpd *models.PostUpdate) (*mo
 }
 
 func (u *useCase)  CreatePosts(slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error){
-	posts, err := u.repository.CreatePosts(slugOrID, postsArr)
+	timer := time.Now()
+	posts, err := u.repository.CreatePosts(timer, slugOrID, postsArr)
 	return posts, err
 }
