@@ -62,7 +62,7 @@ CREATE TABLE thread (
   user_id     INTEGER,
   user_nick   CITEXT  NOT NULL,
 
-  created     TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  created     TIMESTAMP(3) WITH TIME ZONE,
   votes_count INTEGER DEFAULT 0
 );
 
@@ -110,7 +110,7 @@ CREATE TABLE post (
   user_nick   TEXT      NOT NULL,
 
   message     TEXT      NOT NULL,
-  created     TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  created     TIMESTAMP(3) WITH TIME ZONE,
 
   forum_slug  TEXT      NOT NULL,
   thread_id   INTEGER   NOT NULL,
