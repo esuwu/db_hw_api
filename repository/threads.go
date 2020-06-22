@@ -184,7 +184,7 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 	if ids[len(ids) - 1] == 1500000 {
 		Vaccuum(store)
 	}
-
+	tx.Commit()
 	return postsArr, nil
 }
 
