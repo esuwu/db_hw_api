@@ -10,13 +10,11 @@ type Status struct{
 
 const InitScript = `CREATE EXTENSION IF NOT EXISTS CITEXT;
 
-DROP TABLE IF EXISTS users, forum, thread, post, vote, forum_users CASCADE;
 
 DROP FUNCTION IF EXISTS thread_insert();
 
---
--- USERS
---
+
+DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
   id       SERIAL,
 
@@ -27,20 +25,17 @@ CREATE TABLE users (
   fullname TEXT   NOT NULL
 );
 
-CREATE INDEX users_covering_index
-  ON users (nickname, email, about, fullname);
+CREATE INDEX users_cover_idx ON users (nickname, email, about, fullname);
 
-CREATE UNIQUE INDEX users_nickname_index
-  ON users (nickname);
+CREATE UNIQUE INDEX users_nickname_idx ON users (nickname);
 
-CREATE UNIQUE INDEX users_email_index
-  ON users (email);
+CREATE UNIQUE INDEX users_email_idx ON users (email);
 
 CREATE INDEX ON users (nickname, email);
 
---
--- FORUM
---
+
+
+DROP TABLE IF EXISTS forum CASCADE;
 CREATE TABLE forum (
   id        SERIAL PRIMARY KEY,
   slug      CITEXT  NOT NULL,
@@ -52,16 +47,14 @@ CREATE TABLE forum (
   posts     BIGINT  NOT NULL DEFAULT 0
 );
 
-CREATE UNIQUE INDEX forum_slug_index
-  ON forum (slug);
+CREATE UNIQUE INDEX forum_slug_idx ON forum (slug);
 
-CREATE INDEX forum_slug_id_index
-  ON forum (slug, id);
+CREATE INDEX forum_slug_id_idx ON forum (slug, id);
 
 CREATE INDEX on forum (slug, id, title, moderator, threads, posts);
---
--- THREAD
---
+
+
+DROP TABLE IF EXISTS thread CASCADE;
 CREATE TABLE thread (
   id          SERIAL PRIMARY KEY,
 
@@ -75,7 +68,7 @@ CREATE TABLE thread (
   user_id     INTEGER,
   user_nick   CITEXT  NOT NULL,
 
-  created     TIMESTAMPTZ,
+  created     TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   votes_count INTEGER DEFAULT 0
 );
 
@@ -97,37 +90,33 @@ CREATE TRIGGER on_thread_insert
   ON thread
   FOR EACH ROW EXECUTE PROCEDURE thread_insert();
 
-CREATE UNIQUE INDEX thread_slug_index
-  ON thread (slug);
+CREATE UNIQUE INDEX thread_slug_idx ON thread (slug);
 
-CREATE INDEX thread_slug_id_index
-  ON thread (slug, id);
+CREATE INDEX thread_slug_id_idx ON thread (slug, id);
 
-CREATE INDEX thread_forum_id_created_index
-  ON thread (forum_id, created);
+CREATE INDEX thread_forum_id_created_idx ON thread (forum_id, created);
 
-CREATE INDEX thread_forum_id_created_index2
+CREATE INDEX thread_forum_id_created_desc_idx
   ON thread (forum_id, created DESC);
 
-CREATE UNIQUE INDEX thread_id_forum_slug_index
+CREATE UNIQUE INDEX thread_id_forum_slug_idx
   ON thread (id, forum_slug);
 
-CREATE UNIQUE INDEX thread_slug_forum_slug_index
+CREATE UNIQUE INDEX thread_slug_forum_slug_idx
   ON thread (slug, forum_slug);
 
-CREATE UNIQUE INDEX thread_covering_index
+CREATE UNIQUE INDEX thread_cover_idx
   ON thread (forum_id, created, id, slug, title, message, forum_slug, user_nick, created, votes_count);
 
---
--- POST
---
+
+DROP TABLE IF EXISTS post CASCADE;
 CREATE TABLE post (
   id          SERIAL primary key,
 
   user_nick   TEXT      NOT NULL,
 
   message     TEXT      NOT NULL,
-  created     TIMESTAMPTZ,
+  created     TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
   forum_slug  TEXT      NOT NULL,
   thread_id   INTEGER   NOT NULL,
@@ -141,27 +130,19 @@ CREATE TABLE post (
 
 
 
-CREATE INDEX posts_thread_id_index
-  ON post (thread_id, id);
+CREATE INDEX posts_thread_id_id_idx ON post (thread_id, id);
 
-CREATE INDEX posts_thread_id_index2
-  ON post (thread_id);
+CREATE INDEX posts_thread_id_idx ON post (thread_id);
 
-CREATE INDEX posts_thread_id_parents_index
-  ON post (thread_id, parents);
+CREATE INDEX posts_thread_id_parents_idx ON post (thread_id, parents);
 
-CREATE INDEX ON post (thread_id, id, parent, main_parent)
-  WHERE parent = 0;
+CREATE INDEX ON post (thread_id, id, parent, main_parent) WHERE parent = 0;
 
-CREATE INDEX parent_tree_3_1
-  ON post (main_parent, parents DESC, id);
+CREATE INDEX parent_tree_3_1_idx ON post (main_parent, parents DESC, id);
 
-CREATE INDEX parent_tree_4
-  ON post (id, main_parent);
+CREATE INDEX parent_tree_4_idx ON post (id, main_parent);
 
---
--- VOTE
---
+DROP TABLE IF EXISTS vote CASCADE;
 CREATE TABLE vote (
   id         SERIAL,
 
@@ -173,6 +154,8 @@ CREATE TABLE vote (
   CONSTRAINT unique_user_and_thread UNIQUE (user_id, thread_id)
 );
 
+
+DROP TABLE IF EXISTS forum_users CASCADE;
 CREATE TABLE forum_users (
   forumId  INTEGER,
   nickname CITEXT COLLATE ucs_basic NOT NULL,
@@ -181,8 +164,6 @@ CREATE TABLE forum_users (
   fullname TEXT
 );
 
-CREATE UNIQUE INDEX forum_users_forum_id_nickname_index2
-  ON forum_users (forumId, lower(nickname));
+CREATE UNIQUE INDEX forum_users_forum_id_nickname_idx2 ON forum_users (forumId, lower(nickname));
 
-CREATE INDEX forum_users_covering_index2
-  ON forum_users (forumId, lower(nickname), nickname, email, about, fullname);`
+CREATE INDEX forum_users_cover_idx2 ON forum_users (forumId, lower(nickname), nickname, email, about, fullname);`
