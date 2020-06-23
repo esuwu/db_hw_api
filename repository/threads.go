@@ -3,6 +3,7 @@ package repository
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/jackc/pgx"
 	"log"
@@ -52,13 +53,40 @@ func StringsCompare(a, b interface{}) int {
 	return strings.Compare(a.(string), b.(string))
 }
 
+//type Scanner interface {
+//	Scan(dst ...interface{}) error
+//}
+
+//func scanPosts(scanner Scanner, postDst *models.Post) error {
+//	err := scanner.Scan(
+//		&postDst.Created,
+//	)
+//	if err != nil {
+//		return err
+//	}
+//	return nil
+//}
+//
+//
+//func getInsertedPosts(batchResults pgx.BatchResults, batchLen int) (models.Posts, error) {
+//	insertedPosts := make(models.Post, batchLen)
+//
+//	for i := 0; i < batchLen; i++ {
+//		if err := scanPosts(batchResults.QueryRow(), &insertedPosts[i]); err != nil {
+//			return nil, err
+//		}
+//	}
+//
+//	return insertedPosts, nil
+//}
+
 func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsArr *models.PostArr) (*models.PostArr, error) {
 	tx := TxBegin(store)
 	defer tx.Rollback()
 
 	batch := tx.BeginBatch()
-	defer batch.Close()
-	created := time.Now()
+	created := time.Unix(0, 0)
+
 	var err error
 	var forumID, threadID int
 	var forumSlug string
@@ -145,11 +173,16 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 		post.Thread_id = threadID
 		post.Forum_slug = forumSlug
 		post.Created = created
+		fmt.Print(post.Created)
 		post.User_nick = userRealNicknameMap[strings.ToLower(post.User_nick)]
 		post.Parents = append(post.Parents, int32(ids[index]))
 
 		batch.Queue("insertIntoPost", []interface{}{post.Id, post.User_nick, post.Message, post.Created, post.Forum_slug, post.Thread_id, post.Parent, post.Parents, post.Parents[0]}, nil, nil)
 	}
+
+	//for _, post := range *postsArr {
+	//	batch.QueryRowResults().Scan(&post.Created)
+	//}
 
 	for _, user := range userModelsOrderedSet {
 		batch.Queue("insertIntoForumUsers", []interface{}{forumID, user.Nickname, user.Email, user.About, user.Fullname}, nil, nil)
@@ -160,6 +193,11 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 		log.Fatalln(err)
 	}
 
+	//for _, post := range *postsArr {
+	//	if err := batch.QueryRowResults().Scan(&post.Created); err != nil {
+	//		log.Print(err)
+	//	}
+	//}
 	for range *postsArr {
 		if _, err := batch.ExecResults(); err != nil {
 			log.Fatalln(err)
