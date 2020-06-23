@@ -7,14 +7,13 @@ import (
 	"github.com/jackc/pgx"
 	_ "github.com/lib/pq"
 	"github.com/valyala/fasthttp"
-	"io/ioutil"
 	"log"
 	delivery "main/delivery"
 	prepStat "main/prepareStat"
 	repository "main/repository"
 	useCase "main/usecase"
 )
-const initPath = "./init/db.sql"
+//const initPath = "./init/db.sql"
 func InitPrepStatement(db *pgx.ConnPool){
 
 	prepStat.PrepareForum(db)
@@ -57,7 +56,6 @@ func RouteInit(api *delivery.Handlers) *fasthttprouter.Router {
 func main() {
 	db, err := pgx.NewConnPool(pgx.ConnPoolConfig{
 		ConnConfig: pgx.ConnConfig{
-			Host:     "localhost",
 			User:     "docker",
 			Password: "docker",
 			Port:     5432,
@@ -65,22 +63,22 @@ func main() {
 		},
 		MaxConnections: 50,
 	})
-	tx, err := db.Begin()
+	//tx, err := db.Begin()
 	usecases := useCase.NewUseCase(repository.NewDBStore(db))
 	api := delivery.NewHandlers(usecases)
 
-	buf, err := ioutil.ReadFile(initPath)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	schema := string(buf)
-
-	if _, err = tx.Exec(schema); err != nil {
-		log.Println(err)
-		tx.Rollback()
-	}
-	tx.Commit()
+	//buf, err := ioutil.ReadFile(initPath)
+	//if err != nil {
+	//	log.Fatalln(err)
+	//}
+	//
+	//schema := string(buf)
+	//
+	//if _, err = tx.Exec(schema); err != nil {
+	//	log.Println(err)
+	//	tx.Rollback()
+	//}
+	//tx.Commit()
 
 	InitPrepStatement(db)
 	if err != nil {
