@@ -2,120 +2,78 @@ package delivery
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/gorilla/mux"
-	"io/ioutil"
+	"github.com/valyala/fasthttp"
 	models "main/models"
 	"net/http"
-	"strconv"
 )
 
-func (handlers *Handlers) CreateUser(w http.ResponseWriter, r *http.Request) {
+
+func (handlers *Handlers) CreateUser(ctx *fasthttp.RequestCtx) {
 	var user models.User
+	user.UnmarshalJSON(ctx.PostBody())
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	name := ctx.UserValue("nickname")
 
-	fmt.Println(string(body))
-	vars := mux.Vars(r)
-	nickname := vars["nickname"]
+	Users, err := handlers.usecases.CreateUser(&user, name)
 
-	err := json.Unmarshal(body, &user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	var resp []byte
+
+	switch err {
+	case nil:
+		ctx.SetStatusCode(http.StatusCreated)
+		user.Nickname = ctx.UserValue("nickname").(string)
+		resp, _ = user.MarshalJSON()
+
+	case models.UserAlreadyExists:
+		ctx.SetStatusCode(http.StatusConflict)
+		resp, _ = Users.MarshalJSON()
 	}
-	user.Nickname = nickname
 
-	users, e := handlers.usecases.PutUser(&user)
-	if e != nil {
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, e.Code)
-		//http.Error(w, e.Message, e.Code)
-		return
-	}
-	if users != nil {
-		body, _ = json.Marshal(users)
-		WriteResponse(w, body, http.StatusConflict)
-		return
-	}
-	body, err = json.Marshal(user)
-	//http.Error(w, err.Error(), http.StatusInternalServerError)
-
-	WriteResponse(w, body, http.StatusCreated)
+	ctx.SetContentType("application/json")
+	ctx.Write(resp)
 }
 
-func (handlers *Handlers) GetUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	nickname := vars["nickname"]
+func (handlers *Handlers) GetUser(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	user, err := handlers.usecases.GetUserByNickname(nickname)
-	if err != nil {
-		body, _ := json.Marshal(err)
-		WriteResponse(w, body, err.Code)
-		return
+	name := ctx.UserValue("nickname")
+
+	var response []byte
+
+	userFromDb, err := handlers.usecases.GetUserProfile(name)
+
+	switch err {
+	case nil:
+		response, _ = userFromDb.MarshalJSON()
+	case models.UserNotFound:
+
+		ctx.SetStatusCode(http.StatusNotFound)
+		response, _ = json.Marshal(err)
+		ctx.SetContentType("application/json")
 	}
-
-	body, _ := json.Marshal(user)
-
-	WriteResponse(w, body, http.StatusOK)
+	ctx.Write(response)
 }
 
-func (handlers *Handlers) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	var userUpd models.UpdateUserFields
-	var e *models.Error
+func (handlers *Handlers) UpdateUser(ctx *fasthttp.RequestCtx) {
+	user := models.UserUpd{}
+	user.UnmarshalJSON(ctx.PostBody())
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	nickname := ctx.UserValue("nickname")
 
-	fmt.Println(string(body))
-	vars := mux.Vars(r)
-	nickname := vars["nickname"]
+	userUpdated, error := handlers.usecases.UpdateUserProfile(&user, &nickname)
+	var result []byte
+	switch error {
+	case nil:
+		result, _ = userUpdated.MarshalJSON()
 
-	err := json.Unmarshal(body, &userUpd)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	case models.ConflictOnUsers:
+		ctx.SetStatusCode(http.StatusConflict)
+		result, _ = json.Marshal(error)
+	case models.UserNotFound:
+		ctx.SetStatusCode(http.StatusNotFound)
+		result, _ = json.Marshal(error)
 	}
 
-	user, e := handlers.usecases.ChangeUser(&userUpd, nickname)
-	if e != nil {
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, e.Code)
-		return
-	}
-
-	body, _ = json.Marshal(user)
-
-	WriteResponse(w, body, http.StatusOK)
-}
-
-func (handlers *Handlers) GetUsers(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	slug := vars["slug"]
-
-	query := r.URL.Query()
-	var params models.UserParams
-	var err error
-
-	params.Limit, err = strconv.Atoi(query.Get("limit"))
-	if err != nil {
-		params.Limit = -1
-	}
-	params.Since = query.Get("since")
-	fmt.Println("SINCE: ", params.Since)
-	params.Desc = query.Get("desc") == "true"
-
-	users, e := handlers.usecases.GetUsersByForum(slug, params)
-	if e != nil {
-		body, _ := json.Marshal(e)
-		WriteResponse(w, body, e.Code)
-		return
-	}
-
-	fmt.Println(users)
-
-	body, _ := json.Marshal(users)
-
-	WriteResponse(w, body, http.StatusOK)
+	ctx.SetContentType("application/json")
+	ctx.Write(result)
 }

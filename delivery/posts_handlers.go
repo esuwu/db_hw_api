@@ -2,208 +2,83 @@ package delivery
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/gorilla/mux"
-	"io/ioutil"
+	"github.com/valyala/fasthttp"
 	models "main/models"
 	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
+func (handlers *Handlers) CreatePost(ctx *fasthttp.RequestCtx) {
+	slugOrID := ctx.UserValue("slug_or_id")
 
-func (handlers *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
-	var posts models.Posts
-	var err error
-	var tempID int
-	id := -1
+	postsArr := models.PostArr{}
+	postsArr.UnmarshalJSON(ctx.PostBody())
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	newPosts, err := handlers.usecases.CreatePosts(slugOrID, &postsArr)
 
-	fmt.Println(string(body))
-	vars := mux.Vars(r)
-	slug_or_id := vars["slug_or_id"]
+	var response []byte
 
-	err = json.Unmarshal(body, &posts)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tempID, err = strconv.Atoi(slug_or_id)
-	if err == nil {
-		id = tempID
-	}
-
-	postsAdded := make(models.Posts, len(posts))
-	var e *models.Error
-	created := time.Now()
-
-	for i, _ := range posts {
-		posts[i].Created = created
-		if id != -1 {
-			posts[i].Thread = int64(id)
-			postsAdded[i], e = handlers.usecases.PutPost(posts[i])
+	switch err {
+	case nil:
+		ctx.SetStatusCode(http.StatusCreated)
+		if newPosts != nil {
+			response, _ = newPosts.MarshalJSON()
 		} else {
-			postsAdded[i], e = handlers.usecases.PutPostWithSlug(posts[i], slug_or_id)
+			response = []byte("[]")
 		}
-		if e != nil {
-			body, _ = json.Marshal(e)
-			WriteResponse(w, body, e.Code)
-			return
-		}
+
+	case models.ThreadNotFound, models.UserNotFound:
+		ctx.SetStatusCode(http.StatusNotFound)
+		response, _ = json.Marshal(err)
+
+	case models.PostsConflict:
+		ctx.SetStatusCode(http.StatusConflict)
+		response, _ = json.Marshal(err)
 	}
 
-	if len(posts) == 0 {
-		//var thread models.Thread
-		if id != -1 {
-			_, e = handlers.usecases.GetThreadByID(int64(id))
-		} else {
-			_, e = handlers.usecases.GetThreadBySlug(slug_or_id)
-		}
-		if e != nil {
-			body, _ = json.Marshal(e)
-			WriteResponse(w, body, e.Code)
-			return
-		}
-	}
-
-	body, _ = json.Marshal(postsAdded)
-	WriteResponse(w, body, http.StatusCreated)
+	ctx.SetContentType("application/json")
+	ctx.Write(response)
 }
 
-func (handlers *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
-	var setPost, post models.Post
-	var e *models.Error
+func  (handlers *Handlers)  GetPostFull(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
+	id := ctx.UserValue("id").(string)
+	related := ctx.QueryArgs().Peek("related")
 
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+	postDetails, statusCode := handlers.usecases.GetPostDetails(&id, related)
+	ctx.SetStatusCode(statusCode)
 
-	vars := mux.Vars(r)
-	idStr := vars["id"]
+	switch statusCode {
+	case http.StatusOK:
+		resp, _ := postDetails.MarshalJSON()
+		ctx.Write(resp)
+	case http.StatusNotFound:
 
-	id, err := strconv.Atoi(idStr)
-
-	err = json.Unmarshal(body, &setPost)
-	if err != nil {
-		http.Error(w, "unmarshal error", http.StatusInternalServerError)
-		return
+		resp := models.ErrorString{}
+		resp.Message = "Can't find post with id: " + id
+		response, _ := resp.MarshalJSON()
+		ctx.SetContentType("application/json")
+		ctx.Write(response)
 	}
-
-	setPost.ID = int64(id)
-
-	post, e = handlers.usecases.ChangePost(&setPost)
-	if e != nil {
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, e.Code)
-		return
-	}
-
-	body, _ = json.Marshal(post)
-	WriteResponse(w, body, http.StatusOK)
 }
 
-func (handlers *Handlers) GetPostFull(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
+func (handlers *Handlers) UpdatePost(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
+	id := ctx.UserValue("id").(string)
+	postUpd := models.PostUpdate{}
 
-	id, _ := strconv.Atoi(idStr)
+	postUpd.UnmarshalJSON(ctx.PostBody())
 
-	fields := strings.Split(r.URL.Query().Get("related"), ",")
-	fmt.Println("RELATED???:", fields)
+	post, statusCode := handlers.usecases.UpdatePostDetails(&id, &postUpd)
+	ctx.SetStatusCode(statusCode)
 
-	postFull, err := handlers.usecases.GetPostFull(int64(id), fields)
-	if err != nil {
-		body, _ := json.Marshal(err)
-		WriteResponse(w, body, err.Code)
-		return
+	switch statusCode {
+	case http.StatusOK:
+		resp, _ := post.MarshalJSON()
+		ctx.Write(resp)
+	case http.StatusNotFound:
+		resp := models.ErrorString{}
+		resp.Message = "Can't find post with id: " + id
+		response, _ := resp.MarshalJSON()
+		ctx.SetContentType("application/json")
+		ctx.Write(response)
 	}
-
-	fmt.Println(postFull)
-
-	body, _ := json.Marshal(postFull)
-	WriteResponse(w, body, http.StatusOK)
-}
-
-func (handlers *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
-	var posts models.Posts
-	var e *models.Error
-
-	vars := mux.Vars(r)
-	slug_or_id := vars["slug_or_id"]
-
-	query := r.URL.Query()
-	var params models.PostParams
-	var err error
-
-	params.Limit, err = strconv.Atoi(query.Get("limit"))
-	if err != nil {
-		params.Limit = -1
-	}
-	params.Since, err = strconv.Atoi(query.Get("since"))
-	if err != nil {
-		params.Since = -1
-	}
-	fmt.Println("SINCE: ", params.Since)
-	params.Desc = query.Get("desc") == "true"
-
-	switch query.Get("sort") {
-	case "flat":
-		params.Sort = models.Flat
-	case "tree":
-		params.Sort = models.Tree
-	case "parent_tree":
-		params.Sort = models.ParentTree
-	}
-
-	if id, err := strconv.Atoi(slug_or_id); err == nil {
-		posts, e = handlers.usecases.GetPostsByThreadID(int64(id), params)
-	} else {
-		posts, e = handlers.usecases.GetPostsByThreadSlug(slug_or_id, params)
-	}
-	if e != nil {
-		body, _ := json.Marshal(e)
-		WriteResponse(w, body, e.Code)
-		return
-	}
-
-	fmt.Println(posts)
-
-	body, _ := json.Marshal(posts)
-	WriteResponse(w, body, http.StatusOK)
-}
-
-func (handlers *Handlers) Vote(w http.ResponseWriter, r *http.Request) {
-	var vote models.Vote
-
-	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
-
-	fmt.Println(string(body))
-	vars := mux.Vars(r)
-	slug_or_id := vars["slug_or_id"]
-
-	err := json.Unmarshal(body, &vote)
-	if err != nil {
-
-	}
-
-	var thread models.Thread
-	var e *models.Error
-
-	if id, err := strconv.Atoi(slug_or_id); err == nil {
-		vote.ThreadID = int64(id)
-		thread, e = handlers.usecases.PutVote(&vote)
-	} else {
-		thread, e = handlers.usecases.PutVoteWithSlug(&vote, slug_or_id)
-	}
-	if e != nil {
-		body, _ = json.Marshal(e)
-		WriteResponse(w, body, http.StatusNotFound)
-		return
-	}
-
-	body, _ = json.Marshal(thread)
-	WriteResponse(w, body, http.StatusOK)
 }

@@ -1,57 +1,33 @@
 package models
 
 import (
-	"log"
-	"net/http"
 	"regexp"
+	"strings"
 )
-
+//easyjson:json
 type User struct {
-	ID       int64  `json:"-"`
-	About    string `json:"about"`
+	About    string `json:"about,omitempty"`
 	Email    string `json:"email"`
 	Fullname string `json:"fullname"`
-	Nickname string `json:"nickname"`
+	Nickname string `json:"nickname,omitempty"`
 }
-
-type Users []*User
-
-type UserParams struct {
-	Limit int
-	Since string
-	Desc  bool
-}
-
-type UpdateUserFields struct {
-	About    *string `json:"about"`
+//easyjson:json
+type UserUpd struct {
+	About    *string `json:"about,omitempty"`
 	Email    *string `json:"email"`
 	Fullname *string `json:"fullname"`
+	Nickname *string `json:"nickname,omitempty"`
 }
+
+func (u *User) CompareNames(r *User) int {
+	return strings.Compare(strings.ToLower(u.Nickname), strings.ToLower(r.Nickname))
+}
+
+//easyjson:json
+type UsersArr []*User
 
 var (
 	nicknameRegexp *regexp.Regexp
 	emailRegexp    *regexp.Regexp
 )
 
-func init() {
-	var err error
-	nicknameRegexp, err = regexp.Compile(`^[a-zA-Z0-9_.]+$`)
-	if err != nil {
-		log.Fatalf("nickname regexp err: %s", err.Error())
-	}
-
-	emailRegexp, err = regexp.Compile("^[a-zA-Z0-9.!#$%&''*+/=?^_`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$`)
-	if err != nil {
-		log.Fatalf("email regexp err: %s", err.Error())
-	}
-}
-
-func (u *User) Validate() *Error {
-	if !(nicknameRegexp.MatchString(u.Nickname) &&
-		emailRegexp.MatchString(u.Email) &&
-		u.Fullname != "") {
-		return NewError(http.StatusBadRequest, "validation failed")
-	}
-
-	return nil
-}
