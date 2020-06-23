@@ -33,27 +33,12 @@ func (fu forumUserArr) Less(i, j int) bool {
 	return *(fu[i].userNickname) < *(fu[j].userNickname)
 }
 
-const generateNextIDs = `SELECT
-	array_agg(nextval('post_id_seq')::BIGINT)
-FROM generate_series(1,$1)`
-
-const getThreadIdAndForumSlugBySlug = `SELECT id,
-	forum_slug::TEXT
-FROM thread
-WHERE slug=$1`
-
-const getThreadIdAndForumSlugById = `SELECT id,
-	forum_slug::TEXT
-FROM thread
-WHERE id=$1`
-
-
 
 func StringsCompare(a, b interface{}) int {
 	return strings.Compare(a.(string), b.(string))
 }
 
-//type Scanner interface {
+//type scanner interface {
 //	Scan(dst ...interface{}) error
 //}
 
@@ -68,7 +53,7 @@ func StringsCompare(a, b interface{}) int {
 //}
 //
 //
-//func getInsertedPosts(batchResults pgx.BatchResults, batchLen int) (models.Posts, error) {
+//func getPosts(batchResults pgx.BatchResults, batchLen int) (models.Posts, error) {
 //	insertedPosts := make(models.Post, batchLen)
 //
 //	for i := 0; i < batchLen; i++ {
@@ -94,12 +79,12 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 	//Claiming thread ID
 	threadID, err = strconv.Atoi(slugOrID.(string))
 	if err != nil {
-		if err = tx.QueryRow(getThreadIdAndForumSlugBySlug, slugOrID).Scan(&threadID, &forumSlug); err != nil {
+		if err = tx.QueryRow("SELECT id, forum_slug::TEXT FROM thread WHERE slug=$1", slugOrID).Scan(&threadID, &forumSlug); err != nil {
 			log.Println(err)
 			return nil, models.ThreadNotFound
 		}
 	} else {
-		if err = tx.QueryRow(getThreadIdAndForumSlugById, threadID).Scan(&threadID, &forumSlug); err != nil {
+		if err = tx.QueryRow("SELECT id, forum_slug::TEXT FROM thread WHERE id=$1", threadID).Scan(&threadID, &forumSlug); err != nil {
 			log.Println(err)
 			return nil, models.ThreadNotFound
 		}
@@ -114,7 +99,7 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 	}
 
 	ids := make([]int64, 0, len(*postsArr))
-	if err = tx.QueryRow(generateNextIDs, len(*postsArr)).Scan(&ids); err != nil {
+	if err = tx.QueryRow("SELECT array_agg(nextval('post_id_seq')::BIGINT) FROM generate_series(1,$1)", len(*postsArr)).Scan(&ids); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -219,9 +204,6 @@ func (store *DBStore) CreatePosts(timer time.Time, slugOrID interface{}, postsAr
 		log.Fatalln(err)
 	}
 
-	if ids[len(ids) - 1] == 1500000 {
-		Vaccuum(store)
-	}
 	tx.Commit()
 	return postsArr, nil
 }
@@ -288,7 +270,7 @@ func (store *DBStore) UpdateThreadDetails(slugOrID *string, thrUpdate *models.Th
 	var ID int
 	var fs string
 	if ID, err = strconv.Atoi(*slugOrID); err != nil {
-		if err = tx.QueryRow(getThreadIdAndForumSlugBySlug, slugOrID).Scan(&ID, &fs);
+		if err = tx.QueryRow("SELECT id, forum_slug::TEXT FROM thread WHERE slug=$1", slugOrID).Scan(&ID, &fs);
 			err != nil {
 			return nil, http.StatusNotFound
 		}

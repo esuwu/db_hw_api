@@ -7,20 +7,9 @@ import (
 )
 
 
-const selectUsrByNickOrEmailQuery = `SELECT nickname::TEXT,
-	email::TEXT,
-	about,
-	fullname
-FROM users
-WHERE nickname=$1 OR email=$2`
+const selectUsrByNickOrEmailQuery = `SELECT nickname::TEXT, email::TEXT, about, fullname FROM users WHERE nickname=$1 OR email=$2`
 
-const getUserProfileQuery = `SELECT
-	nickname::TEXT,
-	email::TEXT,
-	about,
-	fullname
-FROM users
-WHERE nickname = $1`
+const getUserProfileQuery = `SELECT nickname::TEXT, email::TEXT, about, fullname FROM users WHERE nickname = $1`
 
 func PrepareUsers(tx *pgx.ConnPool) {
 	if _, err := tx.Prepare("selectUsrByNickOrEmailQuery", selectUsrByNickOrEmailQuery); err != nil {

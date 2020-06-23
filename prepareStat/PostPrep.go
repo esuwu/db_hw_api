@@ -6,16 +6,7 @@ import (
 	"github.com/jackc/pgx"
 )
 
-const getPostDetailsQuery = `SELECT id,
-	user_nick::TEXT,
-	message,
-	created,
-	forum_slug::TEXT,
-	thread_id,
-	is_edited,
-	parent
-FROM post
-WHERE id=$1`
+const getPostDetailsQuery = `SELECT id, user_nick::TEXT, message, created, forum_slug::TEXT, thread_id, is_edited, parent FROM post WHERE id=$1`
 
 const getPostsFlatSinceLimit = `SELECT id,
 	user_nick::TEXT,
@@ -268,8 +259,6 @@ func PreparePost(tx *pgx.ConnPool) {
 	if _, err := tx.Prepare("getPostsParentTreeSinceLimitDesc", getPostsParentTreeSinceLimitDesc); err != nil {
 		log.Fatalln(err)
 	}
-
-
 
 	if _, err := tx.Prepare("getPostsParentTreeLimitDesc", getPostsParentTreeLimitDesc); err != nil {
 		log.Fatalln(err)

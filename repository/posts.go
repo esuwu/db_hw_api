@@ -51,22 +51,6 @@ func (store *DBStore) GetPostDetails(id *string, related []byte) (*models.PostDe
 	return &postDetails, 200
 }
 
-const updatePostDetailsQuery = `UPDATE post
-SET message=coalesce($2,message),
-	is_edited=(CASE WHEN $2 IS NULL OR $2 = message
-		THEN FALSE
-		ELSE TRUE
-		END)
-WHERE ID=$1
-RETURNING id,
-	user_nick::TEXT,
-	message,
-	created,
-	forum_slug::TEXT,
-	thread_id,
-	is_edited,
-	parent`
-
 func (store *DBStore) UpdatePostDetails(id *string, postUpd *models.PostUpdate) (*models.Post, int) {
 	tx, err := store.DB.Begin()
 	if err != nil {
@@ -76,7 +60,7 @@ func (store *DBStore) UpdatePostDetails(id *string, postUpd *models.PostUpdate) 
 
 	postUpdated := models.Post{}
 
-	err = tx.QueryRow(updatePostDetailsQuery, id, postUpd.Message).
+	err = tx.QueryRow("UPDATE post\nSET message=coalesce($2,message), is_edited=(CASE WHEN $2 IS NULL OR $2 = message THEN FALSE ELSE TRUE END) WHERE ID=$1 RETURNING id, user_nick::TEXT, message, created, forum_slug::TEXT, thread_id, is_edited, parent", id, postUpd.Message).
 		Scan(&postUpdated.Id, &postUpdated.User_nick, &postUpdated.Message,
 		&postUpdated.Created, &postUpdated.Forum_slug, &postUpdated.Thread_id,
 		&postUpdated.Is_edited, &postUpdated.Parent)

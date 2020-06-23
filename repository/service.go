@@ -5,11 +5,6 @@ import (
 	"main/models"
 )
 
-const statusQuery = `SELECT
-	(SELECT count(*) FROM forum) as forum,
-	(SELECT count(*) FROM post) as post,
-	(SELECT count(*) FROM users) as user,
-	(SELECT count(*) FROM thread) as thread`
 
 func (store *DBStore) GetStatus() *models.Status {
 	tx, err := store.DB.Begin()
@@ -19,19 +14,11 @@ func (store *DBStore) GetStatus() *models.Status {
 	defer tx.Commit()
 
 	status := models.Status{}
-	tx.QueryRow(statusQuery).Scan(&status.Forum, &status.Post, &status.User, &status.Thread)
+	tx.QueryRow("SELECT (SELECT count(*) FROM forum) as forum, (SELECT count(*) FROM post) as post, (SELECT count(*) FROM users) as user, (SELECT count(*) FROM thread) as thread").Scan(&status.Forum, &status.Post, &status.User, &status.Thread)
 
 	return &status
 }
 
-const deleteDBQuery = `TRUNCATE forum_users,
-	vote,
-	post,
-	thread,
-	forum,
-	users
-RESTART IDENTITY
-CASCADE`
 
 func (store *DBStore) Clear() {
 	tx, err := store.DB.Begin()
@@ -40,5 +27,5 @@ func (store *DBStore) Clear() {
 	}
 	defer tx.Commit()
 
-	tx.Exec(deleteDBQuery)
+	tx.Exec("TRUNCATE forum_users, vote, post, thread, forum, users RESTART IDENTITY CASCADE")
 }

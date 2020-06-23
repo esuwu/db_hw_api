@@ -7,11 +7,6 @@ import (
 	"main/models"
 )
 
-const createUserQuery = `INSERT INTO users
-	(about, email, fullname, nickname)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT DO NOTHING`
-
 func (store *DBStore) CreateUser(user *models.User, nickname interface{}) (*models.UsersArr, error) {
 	tx, err := store.DB.Begin()
 	if err != nil {
@@ -19,7 +14,7 @@ func (store *DBStore) CreateUser(user *models.User, nickname interface{}) (*mode
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec(createUserQuery, &user.About, &user.Email, &user.Fullname, &nickname)
+	res, err := tx.Exec("INSERT INTO users (about, email, fullname, nickname) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING", &user.About, &user.Email, &user.Fullname, &nickname)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -62,16 +57,6 @@ func (store *DBStore) GetUserProfile(nickname interface{}) (*models.User, error)
 	return &user, nil
 }
 
-const updateUserProfileQuery = `UPDATE users
-SET about = COALESCE($1, users.about),
-	email = COALESCE($2, users.email),
-	fullname = COALESCE($3, users.fullname)
-WHERE nickname=$4
-RETURNING
-	nickname::TEXT,
-	email::TEXT,
-	about,
-	fullname`
 
 func (store *DBStore) UpdateUserProfile(newData *models.UserUpd, nickname interface{}) (*models.User, error) {
 	tx, err := store.DB.Begin()
@@ -82,7 +67,7 @@ func (store *DBStore) UpdateUserProfile(newData *models.UserUpd, nickname interf
 
 	user := models.User{}
 
-	if err = tx.QueryRow(updateUserProfileQuery, newData.About, newData.Email, newData.Fullname, &nickname).
+	if err = tx.QueryRow("UPDATE users SET about = COALESCE($1, users.about), email = COALESCE($2, users.email), fullname = COALESCE($3, users.fullname) WHERE nickname=$4 RETURNING nickname::TEXT, email::TEXT, about, fullname", newData.About, newData.Email, newData.Fullname, &nickname).
 		Scan(&user.Nickname, &user.Email, &user.About, &user.Fullname); err != nil {
 		if _, ok := err.(pgx.PgError); ok {
 			return nil, models.ConflictOnUsers

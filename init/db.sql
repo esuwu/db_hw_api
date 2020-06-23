@@ -95,11 +95,6 @@ CREATE INDEX thread_forum_id_created_idx ON thread (forum_id, created);
 CREATE INDEX thread_forum_id_created_desc_idx
   ON thread (forum_id, created DESC);
 
-CREATE UNIQUE INDEX thread_id_forum_slug_idx
-  ON thread (id, forum_slug);
-
-CREATE UNIQUE INDEX thread_slug_forum_slug_idx
-  ON thread (slug, forum_slug);
 
 CREATE UNIQUE INDEX thread_cover_idx
   ON thread (forum_id, created, id, slug, title, message, forum_slug, user_nick, created, votes_count);
@@ -123,9 +118,6 @@ CREATE TABLE post (
   is_edited   BOOLEAN   NOT NULL DEFAULT FALSE
 );
 
-
-
-CREATE INDEX posts_thread_id_id_idx ON post (thread_id, id);
 
 CREATE INDEX posts_thread_id_idx ON post (thread_id);
 
@@ -162,3 +154,9 @@ CREATE TABLE forum_users (
 CREATE UNIQUE INDEX forum_users_forum_id_nickname_idx2 ON forum_users (forumId, lower(nickname));
 
 CREATE INDEX forum_users_cover_idx2 ON forum_users (forumId, lower(nickname), nickname, email, about, fullname);
+
+CLUSTER forum_users USING forum_users_forum_id_nickname_idx
+CLUSTER users USING users_nickname_idx
+CLUSTER post USING parent_tree_3_1_idx
+CLUSTER thread USING thread_forum_id_created_idx
+CLUSTER forum USING forum_slug_id_idx
