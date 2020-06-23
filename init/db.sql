@@ -92,9 +92,11 @@ CREATE INDEX thread_slug_id_idx ON thread (slug, id);
 
 CREATE INDEX thread_forum_id_created_idx ON thread (forum_id, created);
 
-CREATE INDEX thread_forum_id_created_desc_idx
-  ON thread (forum_id, created DESC);
+CREATE INDEX thread_forum_id_created_desc_idx ON thread (forum_id, created DESC);
 
+CREATE UNIQUE INDEX thread_id_forum_slug_idx ON thread (id, forum_slug);
+
+CREATE UNIQUE INDEX thread_slug_forum_slug_idx ON thread (slug, forum_slug);
 
 CREATE UNIQUE INDEX thread_cover_idx
   ON thread (forum_id, created, id, slug, title, message, forum_slug, user_nick, created, votes_count);
